@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Book13 - Go Interactive</title>
+    <script src="/wasm_exec.js"></script>
+    <script>
+      if (typeof WebAssembly !== 'undefined') {
+        const go = new Go();
+        WebAssembly.instantiateStreaming(fetch("/yaegi.wasm"), go.importObject)
+          .then((result) => {
+            go.run(result.instance);
+            console.log("Go WASM Initialized!");
+          })
+          .catch(err => console.error("WASM Initialization Error:", err));
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
