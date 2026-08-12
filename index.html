@@ -2,23 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Book13 - Go Interactive</title>
-    <script src="/book13/wasm_exec.js"></script>
-    <script>
-      if (typeof WebAssembly !== 'undefined') {
-        const go = new Go();
-        WebAssembly.instantiateStreaming(fetch("/yaegi.wasm"), go.importObject)
-          .then((result) => {
-            go.run(result.instance);
-            console.log("Go WASM Initialized!");
-          })
-          .catch(err => console.error("WASM Initialization Error:", err));
-      }
-    </script>
-    <script type="module" crossorigin src="/book13/assets/index-9C8FSKbX.js"></script>
-    <link rel="stylesheet" crossorigin href="/book13/assets/index-BrxNs7ed.css">
+    <meta name="description" content="Twelve small labs for experienced developers learning to think in Go." />
+    <title>The Go Shift — Learn the decisions behind idiomatic Go</title>
+    <script type="module" crossorigin src="/book13/assets/index-CRr2VijN.js"></script>
+    <link rel="stylesheet" crossorigin href="/book13/assets/index-CztSBeK5.css">
   </head>
   <body>
     <div id="root"></div>
