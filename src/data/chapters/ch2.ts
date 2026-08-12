@@ -1,4 +1,4 @@
-import { Chapter } from '../types';
+import type { Chapter } from '../types';
 
 export const ch2: Chapter = {
   id: 'ch2',

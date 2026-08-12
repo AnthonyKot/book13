@@ -30,7 +30,7 @@ function App() {
 
   const runCode = () => {
     setIsRunning(true);
-    setOutput("Executing via WebAssembly...\\n\\n");
+    setOutput("Executing via WebAssembly...\n\n");
     
     setTimeout(() => {
       let executionOutput = "";
@@ -52,7 +52,7 @@ function App() {
         markChapterCompleted(chapter.id);
       }
       
-      setOutput(\`[Terminal Output]\\n\${executionOutput}\\n\\n[Challenge Validation]\\n\${result.message}\`);
+      setOutput("[Terminal Output]\n" + executionOutput + "\n\n[Challenge Validation]\n" + result.message);
       setIsRunning(false);
     }, 100);
   };
@@ -61,10 +61,10 @@ function App() {
     <div className="app-container">
       {/* Sidebar Navigation */}
       <div className="sidebar">
-        <div className={\`sidebar-icon \${!showChapters ? 'active' : ''}\`} onClick={() => setShowChapters(false)} title="Current Lesson">
+        <div className={"sidebar-icon " + (!showChapters ? "active" : "")} onClick={() => setShowChapters(false)} title="Current Lesson">
           <BookOpen size={20} />
         </div>
-        <div className={\`sidebar-icon \${showChapters ? 'active' : ''}\`} onClick={() => setShowChapters(true)} title="Chapter List">
+        <div className={"sidebar-icon " + (showChapters ? "active" : "")} onClick={() => setShowChapters(true)} title="Chapter List">
           <List size={20} />
         </div>
         <div className="sidebar-icon" style={{ marginTop: 'auto', marginBottom: '20px' }}>
@@ -75,7 +75,7 @@ function App() {
       {/* Lesson Content Pane */}
       <div className="content-pane">
         <div className="progress-container">
-          <div className="progress-bar" style={{ width: \`\${progressPercentage}%\` }}></div>
+          <div className="progress-bar" style={{ width: progressPercentage + "%" }}></div>
         </div>
         <div className="progress-text">{progressPercentage}% Completed</div>
 
@@ -88,7 +88,7 @@ function App() {
               {chapters.map((c) => (
                 <div 
                   key={c.id} 
-                  className={\`chapter-list-item \${c.id === chapter.id ? 'active' : ''}\`}
+                  className={"chapter-list-item " + (c.id === chapter.id ? "active" : "")}
                   onClick={() => { setChapter(c.id); setShowChapters(false); }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

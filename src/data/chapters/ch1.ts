@@ -1,4 +1,4 @@
-import { Chapter } from '../types';
+import type { Chapter } from '../types';
 
 export const ch1: Chapter = {
   id: 'ch1',
@@ -19,8 +19,8 @@ export const ch1: Chapter = {
   initialCode: `package main\n\nimport "fmt"\n\ntype User struct {\n\tName string\n}\n\n// TODO: Refactor this to idiomatic Go\nfunc (u *User) GetName() string {\n\treturn u.Name\n}\n\nfunc main() {\n\tuser := User{Name: "Alice"}\n\tfmt.Println(user.GetName())\n}`,
   validate: (code: string) => {
     if (code.includes('func (u User) GetName()') || !code.includes('func (u *User) GetName()')) {
-      return { success: true, message: '✅ Success! You replaced the pointer receiver with a value receiver.\n\nIn Go, if a method doesn\\'t modify the struct, it\\'s idiomatic to use a value receiver. This prevents unexpected mutations and can sometimes reduce heap allocations.' };
+      return { success: true, message: `✅ Success! You replaced the pointer receiver with a value receiver.\n\nIn Go, if a method doesn't modify the struct, it's idiomatic to use a value receiver. This prevents unexpected mutations and can sometimes reduce heap allocations.` };
     }
-    return { success: false, message: '❌ Compilation successful, but the challenge is not solved yet.\n\nHint: Look closely at the receiver on GetName(). Does it really need a pointer if it\\'s just reading data?' };
+    return { success: false, message: `❌ Compilation successful, but the challenge is not solved yet.\n\nHint: Look closely at the receiver on GetName(). Does it really need a pointer if it's just reading data?` };
   }
 };

@@ -1,4 +1,4 @@
-import { Chapter } from '../types';
+import type { Chapter } from '../types';
 
 export const ch4: Chapter = {
   id: 'ch4',
@@ -36,13 +36,13 @@ func main() {
     if (hasLoop && hasSwap) {
       return {
         success: true,
-        message: '✅ Success! You reversed the slice in-place.\\n\\nGo\\'s multiple assignment syntax `a, b = b, a` makes swapping elements incredibly clean for two-pointer algorithms!'
+        message: `✅ Success! You reversed the slice in-place.\n\nGo's multiple assignment syntax a, b = b, a makes swapping elements incredibly clean for two-pointer algorithms!`
       };
     }
 
     return {
       success: false,
-      message: '❌ Challenge not solved.\\n\\nMake sure to use a `for` loop and swap elements using `nums[i], nums[j] = nums[j], nums[i]`.'
+      message: `❌ Challenge not solved.\n\nMake sure to use a for loop and swap elements using nums[i], nums[j] = nums[j], nums[i].`
     };
   }
 };
