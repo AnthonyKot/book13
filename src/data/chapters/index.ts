@@ -8,5 +8,7 @@ import { ch7 } from './ch7';
 import { ch8 } from './ch8';
 import { ch9 } from './ch9';
 import { ch10 } from './ch10';
+import { ch11 } from './ch11';
+import { ch12 } from './ch12';
 
-export const chapters = [ch1, ch2, ch3, ch4, ch5, ch6, ch7, ch8, ch9, ch10];
+export const chapters = [ch1, ch2, ch3, ch4, ch5, ch6, ch7, ch8, ch9, ch10, ch11, ch12];
