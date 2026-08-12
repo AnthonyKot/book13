@@ -2,73 +2,141 @@ import type { Chapter } from '../types';
 
 export const ch3: Chapter = {
   id: 'ch3',
-  tag: 'Chapter 3',
-  title: 'Concurrency & Goroutine Leaks',
-  content: `
-    <p>Goroutines in Go are extremely lightweight (~2KB stack to start), but they are <strong>not garbage collected automatically</strong> if they remain blocked on a channel or system call. A goroutine leak occurs when a goroutine is spawned but can never exit, keeping its memory and resources allocated indefinitely.</p>
+  order: 10,
+  module: 'ship',
+  title: 'Every Goroutine Needs an Exit',
+  mentalModel: 'Once a caller returns, the runtime will clean up any goroutine it started.',
+  outcome: 'Make a result-producing goroutine stop when either its value is delivered or its caller abandons the work.',
+  recognitionCue: 'At every go statement, ask who waits for it, who can cancel it, and how every blocking send or receive can end.',
+  prediction: {
+    prompt: 'The caller takes the timeout branch before work sends its result. What happens when the worker reaches the unbuffered send?',
+    code: `results := make(chan string)
+go func() {
+	time.Sleep(100 * time.Millisecond)
+	results <- "ready"
+}()
 
-    <h3>How Unbuffered Channels Cause Leaks</h3>
-    <p>An unbuffered channel (<code>make(chan T)</code>) requires a synchronous handoff: the sender blocks until a receiver reads the value.</p>
-    <p>Consider a common pattern: spawning a worker goroutine to fetch data or process background work and send the result back over an unbuffered channel. If the caller function returns early (due to a timeout, error, or fast path) before receiving the result, the worker goroutine will block on <code>ch &lt;- result</code> <strong>forever</strong>!</p>
-
-    <h3>Prevention Strategies</h3>
-    <ul>
-      <li><strong>Buffered Channels:</strong> If a goroutine sends a fixed number of results and does not need to wait for the receiver, use a buffered channel (e.g. <code>make(chan T, 1)</code>). The send completes without waiting for a reader.</li>
-      <li><strong>Context Cancellation:</strong> Pass a <code>context.Context</code> so worker goroutines can monitor <code>ctx.Done()</code> and abort work when cancelled.</li>
-      <li><strong>Select with Default or Timeout:</strong> Use a <code>select</code> statement within the worker to send non-blockingly or handle timeouts.</li>
-    </ul>
+select {
+case value := <-results:
+	fmt.Println(value)
+case <-time.After(10 * time.Millisecond):
+	return
+}`,
+    options: [
+      {
+        id: 'collected',
+        label: 'The runtime removes it',
+        explanation: 'A blocked goroutine is still live. Returning from the caller does not cancel work it started.',
+      },
+      {
+        id: 'blocked',
+        label: 'It blocks on the send',
+        explanation: 'Correct. An unbuffered send needs a receiver, and the only receiver has already returned.',
+      },
+      {
+        id: 'drops',
+        label: 'The channel drops the value',
+        explanation: 'Channels do not silently drop sends. An unbuffered send waits until another goroutine receives.',
+      },
+    ],
+    correctOptionId: 'blocked',
+  },
+  lesson: `
+    <p>Goroutines begin with small stacks that can grow, but “cheap” does not mean “ownerless.” A goroutine blocked on a channel retains its stack and anything reachable from it until it can proceed.</p>
+    <p>If a caller may abandon a result, the sender needs a second exit path. Select between delivering the value and observing the caller’s cancellation:</p>
+    <pre><code>select {
+case out &lt;- value:
+	return true
+case &lt;-ctx.Done():
+	return false
+}</code></pre>
+    <p>A buffer of one can also be correct for exactly one outstanding result because the send can finish without a receiver. That is a capacity proof, not a universal leak fix. Explicit cancellation scales to work with an open-ended lifetime.</p>
   `,
-  challengeTitle: 'Fixing the Leaking Goroutine',
-  challengeDescription: `
-    <p>In the code below, <code>fetchData()</code> spawns a goroutine that fetches data and sends it to an unbuffered channel. However, <code>fetchData()</code> times out after 50ms, returning early. The worker goroutine (which takes 100ms) blocks on <code>ch &lt;- data</code> forever because there is no receiver remaining.</p>
-    <p><strong>Task:</strong> Refactor the code to prevent the goroutine leak. You can solve this by using a <strong>buffered channel</strong> (e.g. <code>make(chan string, 1)</code>), <strong><code>context.Context</code></strong>, or a <strong><code>select</code> statement</strong> in the goroutine.</p>
-  `,
-  initialCode: `package main
+  challenge: {
+    title: 'Give the sender an exit path',
+    description: 'Implement <code>deliver</code>. Return <code>true</code> only when the value reaches <code>out</code>; return <code>false</code> when the context is canceled first. Do not turn this into a non-blocking send that drops a value merely because a receiver is not ready yet.',
+  },
+  starterCode: `package main
 
 import (
+	"context"
 	"fmt"
 	"time"
 )
 
-// fetchData starts a goroutine to fetch data.
-// BUG: If main times out or returns early, the worker goroutine blocks forever on ch <- data!
-func fetchData() string {
-	ch := make(chan string) // unbuffered channel
-
-	go func() {
-		time.Sleep(100 * time.Millisecond)
-		data := "result data"
-		ch <- data // BLOCKS HERE IF NO RECEIVER!
-	}()
-
+func deliver(ctx context.Context, out chan<- string, value string) bool {
+	// BUG: This avoids blocking by dropping a value when no receiver is ready.
 	select {
-	case res := <-ch:
-		return res
-	case <-time.After(50 * time.Millisecond):
-		return "timeout"
+	case out <- value:
+		return true
+	default:
+		return false
 	}
 }
 
 func main() {
-	result := fetchData()
-	fmt.Println("Result:", result)
+	_ = time.Second // time is also used by the lab's behavioral checks.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	delivered := deliver(ctx, make(chan string), "result")
+	fmt.Println("delivered:", delivered)
 }`,
-  validate: (code: string) => {
-    const bufferedChanRegex = /make\s*\(\s*chan\s+\w+\s*,\s*[1-9]\d*\s*\)/;
-    const usesBufferedChan = bufferedChanRegex.test(code);
-    const usesContext = code.includes('context.') || code.includes('ctx.Done()') || code.includes('"context"');
-    const hasSelectInsideGoroutine = /go\s+func\s*\(\s*\)\s*\{[\s\S]*?select\s*\{/.test(code) || (code.includes('select') && code.includes('default:'));
+  hiddenTestCode: `func() {
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if delivered := deliver(canceled, make(chan string), "unused"); !delivered {
+		println("__GO_SHIFT_TEST__\tPASS\talready canceled\tExited without waiting for an abandoned receiver.")
+	} else {
+		println("__GO_SHIFT_TEST__\tFAIL\talready canceled\tReturn false when cancellation wins before delivery.")
+	}
 
-    if (usesBufferedChan || usesContext || hasSelectInsideGoroutine) {
-      return {
-        success: true,
-        message: '✅ Success! You fixed the goroutine leak.\n\nBy using a buffered channel, context cancellation, or a non-blocking select, the worker goroutine can now exit cleanly even if the caller returns early.'
-      };
-    }
+	buffered := make(chan string, 1)
+	if delivered := deliver(context.Background(), buffered, "ready"); delivered && <-buffered == "ready" {
+		println("__GO_SHIFT_TEST__\tPASS\tdelivers value\tSent the exact value when the receiver path was available.")
+	} else {
+		println("__GO_SHIFT_TEST__\tFAIL\tdelivers value\tReturn true only after sending the supplied value to out.")
+	}
 
-    return {
-      success: false,
-      message: '❌ The goroutine leak is still present.\n\nHint: If the channel is unbuffered (make(chan string)), the worker goroutine will block on `ch <- data` when fetchData() times out. Try using a buffered channel (e.g., make(chan string, 1)), context cancellation, or a select statement.'
-    };
-  }
+	ctx, stop := context.WithCancel(context.Background())
+	finished := make(chan bool, 1)
+	go func() {
+		finished <- deliver(ctx, make(chan string), "orphaned")
+	}()
+	stop()
+	select {
+	case delivered := <-finished:
+		if !delivered {
+			println("__GO_SHIFT_TEST__\tPASS\tcancel while blocked\tCancellation released a sender that had no receiver.")
+		} else {
+			println("__GO_SHIFT_TEST__\tFAIL\tcancel while blocked\tAn abandoned value was reported as delivered.")
+		}
+	case <-time.After(25 * time.Millisecond):
+		println("__GO_SHIFT_TEST__\tFAIL\tcancel while blocked\tThe sender remained blocked after its context was canceled.")
+	}
+
+	unbuffered := make(chan string)
+	received := make(chan string, 1)
+	go func() {
+		time.Sleep(2 * time.Millisecond)
+		received <- <-unbuffered
+	}()
+	waitCtx, stopWaiting := context.WithTimeout(context.Background(), 25*time.Millisecond)
+	defer stopWaiting()
+	if delivered := deliver(waitCtx, unbuffered, "handoff"); delivered && <-received == "handoff" {
+		println("__GO_SHIFT_TEST__\tPASS\twaits for receiver\tWaited for a later receiver instead of dropping the value.")
+	} else {
+		println("__GO_SHIFT_TEST__\tFAIL\twaits for receiver\tDo not use default: a receiver that arrives before cancellation should still receive the value.")
+	}
+}()`,
+  testNames: ['already canceled', 'delivers value', 'cancel while blocked', 'waits for receiver'],
+  hints: [
+    'A plain <code>out &lt;- value</code> has only one way forward. Replace it with a <code>select</code> so two events can release the function.',
+    'Use one case for <code>out &lt;- value</code> and another for receiving from <code>ctx.Done()</code>. Do not add a <code>default</code> case.',
+    'Return <code>true</code> from the send case and <code>false</code> from the cancellation case.',
+  ],
+  debrief: {
+    title: 'The shift: concurrency creates ownership',
+    summary: 'Starting a goroutine creates a lifetime obligation. Every blocking operation needs a path to finish when its consumer succeeds, fails, or leaves. Here, delivery and cancellation are the only two valid terminal events.',
+    transfer: 'A pipeline stage sends many values rather than one. Why would a buffer of one be insufficient, and where should the cancellation signal come from?',
+  },
 };

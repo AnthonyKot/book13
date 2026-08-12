@@ -1,163 +1,428 @@
-import React, { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Editor from '@monaco-editor/react';
-import { useCourseStore } from './store';
-import { BookOpen, Terminal, CheckCircle, Play, Settings, ChevronRight, List } from 'lucide-react';
+import {
+  ArrowRight,
+  BookOpen,
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  Circle,
+  Code2,
+  FlaskConical,
+  Lightbulb,
+  List,
+  LoaderCircle,
+  Menu,
+  Play,
+  RotateCcw,
+  TerminalSquare,
+  XCircle,
+} from 'lucide-react';
 import { chapters } from './data/chapters';
+import { courseModules, type RuntimeResult } from './data/types';
+import { useCourseStore } from './store';
+
+type MobileTab = 'learn' | 'code' | 'result';
+type RuntimeState = 'loading' | 'ready' | 'error';
 
 function App() {
-  const { currentChapterId, codeSnippets, completedChapters, saveCodeSnippet, setChapter, markChapterCompleted } = useCourseStore();
-  const [output, setOutput] = useState<string>("Run the code to see output...");
+  const {
+    currentChapterId,
+    codeSnippets,
+    completions,
+    predictionSelections,
+    checkedPredictions,
+    hintsRevealed,
+    attempts,
+    setChapter,
+    saveCodeSnippet,
+    resetCodeSnippet,
+    selectPrediction,
+    checkPrediction,
+    revealHint,
+    recordAttempt,
+    recordCompletion,
+  } = useCourseStore();
+  const [result, setResult] = useState<RuntimeResult | null>(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [showChapters, setShowChapters] = useState(false);
+  const [runtimeState, setRuntimeState] = useState<RuntimeState>('loading');
+  const [curriculumOpen, setCurriculumOpen] = useState(false);
+  const [mobileTab, setMobileTab] = useState<MobileTab>('learn');
+  const workerRef = useRef<Worker | null>(null);
+  const timeoutRef = useRef<number | null>(null);
+  const pendingChapterRef = useRef<string | null>(null);
+  const curriculumCloseRef = useRef<HTMLButtonElement | null>(null);
+  const curriculumOpenerRef = useRef<HTMLElement | null>(null);
 
-  const currentChapterIndex = chapters.findIndex(c => c.id === currentChapterId);
-  const chapter = chapters[currentChapterIndex] || chapters[0];
-  const code = codeSnippets[chapter.id] !== undefined ? codeSnippets[chapter.id] : chapter.initialCode;
+  const chapterIndex = Math.max(0, chapters.findIndex((item) => item.id === currentChapterId));
+  const chapter = chapters[chapterIndex] ?? chapters[0];
+  const nextChapter = chapters[chapterIndex + 1];
+  const code = codeSnippets[chapter.id] ?? chapter.starterCode;
+  const selectedPrediction = predictionSelections[chapter.id];
+  const predictionChecked = checkedPredictions[chapter.id] ?? false;
+  const revealedHints = hintsRevealed[chapter.id] ?? 0;
+  const completion = completions[chapter.id];
+  const completedCount = Object.keys(completions).filter((id) => chapters.some((item) => item.id === id)).length;
+  const progress = Math.round((completedCount / chapters.length) * 100);
 
-  const totalChapters = chapters.length;
-  const completedCount = Object.keys(completedChapters).filter(k => completedChapters[k]).length;
-  const progressPercentage = Math.round((completedCount / totalChapters) * 100);
+  const selectedOption = useMemo(
+    () => chapter.prediction.options.find((option) => option.id === selectedPrediction),
+    [chapter, selectedPrediction],
+  );
+  const predictionCorrect = selectedPrediction === chapter.prediction.correctOptionId;
+
+  const finishRun = useCallback((nextResult: RuntimeResult, completedChapterId: string) => {
+    if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
+    timeoutRef.current = null;
+    pendingChapterRef.current = null;
+    recordAttempt(completedChapterId);
+    if (nextResult.status === 'passed') recordCompletion(completedChapterId);
+    setResult(nextResult);
+    setIsRunning(false);
+  }, [recordAttempt, recordCompletion]);
+
+  const startWorker = useCallback(() => {
+    workerRef.current?.terminate();
+    setRuntimeState('loading');
+    const worker = new Worker(`${import.meta.env.BASE_URL}go-runner-worker.js`);
+    workerRef.current = worker;
+    worker.onmessage = (event) => {
+      if (event.data?.type === 'ready') {
+        setRuntimeState('ready');
+        return;
+      }
+      if (event.data?.type === 'runtime-error') {
+        setRuntimeState('error');
+        return;
+      }
+      if (event.data?.type === 'result' && pendingChapterRef.current) {
+        let nextResult: RuntimeResult;
+        try {
+          nextResult = JSON.parse(event.data.result) as RuntimeResult;
+        } catch (error) {
+          nextResult = { status: 'runtime_error', stdout: '', error: error instanceof Error ? error.message : String(error), tests: [] };
+        }
+        const completedChapterId = pendingChapterRef.current;
+        const completedChapter = chapters.find((item) => item.id === completedChapterId);
+        if (nextResult.status === 'runtime_error' && nextResult.tests.length === 0 && completedChapter?.contractFailureMessage) {
+          nextResult = {
+            ...nextResult,
+            status: 'failed',
+            error: undefined,
+            tests: [{ name: 'dependency boundary', passed: false, message: completedChapter.contractFailureMessage }],
+          };
+        }
+        finishRun(nextResult, completedChapterId);
+      }
+    };
+    worker.onerror = () => setRuntimeState('error');
+  }, [finishRun]);
 
   useEffect(() => {
-    setOutput("Run the code to see output...");
+    startWorker();
+    return () => {
+      if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
+      workerRef.current?.terminate();
+    };
+  }, [startWorker]);
+
+  useEffect(() => {
+    setResult(null);
+    setMobileTab('learn');
   }, [chapter.id]);
 
-  const handleEditorChange = (value: string | undefined) => {
-    if (value !== undefined) {
-      saveCodeSnippet(chapter.id, value);
-    }
-  };
+  useEffect(() => {
+    if (!curriculumOpen) return;
+    curriculumCloseRef.current?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setCurriculumOpen(false);
+        window.setTimeout(() => curriculumOpenerRef.current?.focus(), 0);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [curriculumOpen]);
 
   const runCode = () => {
+    if (!predictionChecked || !workerRef.current || runtimeState !== 'ready' || isRunning) return;
     setIsRunning(true);
-    setOutput("Executing via WebAssembly...\n\n");
-    
-    setTimeout(() => {
-      let executionOutput = "";
-      
-      // @ts-ignore
-      if (typeof window.runGoCode === 'function') {
-        try {
-          // @ts-ignore
-          executionOutput = window.runGoCode(code);
-        } catch (e) {
-          executionOutput = "WASM Execution Error: " + e;
-        }
-      } else {
-        executionOutput = "WASM engine is still loading... please try again in a moment.";
+    setMobileTab('result');
+    const requestId = `${chapter.id}-${Date.now()}`;
+    pendingChapterRef.current = chapter.id;
+    workerRef.current.postMessage({ type: 'run', requestId, code, hiddenTests: chapter.hiddenTestCode });
+    timeoutRef.current = window.setTimeout(() => {
+      const timedOutChapter = pendingChapterRef.current;
+      workerRef.current?.terminate();
+      if (timedOutChapter) {
+        finishRun({ status: 'runtime_error', stdout: '', error: 'Execution exceeded 5 seconds and was stopped. Your code is still in the editor.', tests: [] }, timedOutChapter);
       }
-      
-      const result = chapter.validate(code);
-      if (result.success) {
-        markChapterCompleted(chapter.id);
-      }
-      
-      setOutput("[Terminal Output]\n" + executionOutput + "\n\n[Challenge Validation]\n" + result.message);
-      setIsRunning(false);
-    }, 100);
+      startWorker();
+    }, 5000);
+  };
+
+  const resetLab = () => {
+    resetCodeSnippet(chapter.id);
+    setResult(null);
+    setMobileTab('code');
+  };
+
+  const goToChapter = (id: string) => {
+    setChapter(id);
+    setCurriculumOpen(false);
+  };
+
+  const openCurriculum = () => {
+    curriculumOpenerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setCurriculumOpen(true);
+  };
+
+  const closeCurriculum = () => {
+    setCurriculumOpen(false);
+    window.setTimeout(() => curriculumOpenerRef.current?.focus(), 0);
   };
 
   return (
-    <div className="app-container">
-      {/* Sidebar Navigation */}
-      <div className="sidebar">
-        <div className={"sidebar-icon " + (!showChapters ? "active" : "")} onClick={() => setShowChapters(false)} title="Current Lesson">
-          <BookOpen size={20} />
+    <div className="app-shell">
+      <header className="site-header">
+        <a className="brand" href="./" aria-label="The Go Shift home">
+          <span className="brand-mark" aria-hidden="true">G<span>↗</span></span>
+          <span><strong>The Go Shift</strong><small>12 labs for experienced developers</small></span>
+        </a>
+        <div className="header-progress" aria-label={`${completedCount} of ${chapters.length} labs passed`}>
+          <span>{completedCount}/{chapters.length} labs</span>
+          <div className="progress-track" aria-hidden="true"><span style={{ width: `${progress}%` }} /></div>
         </div>
-        <div className={"sidebar-icon " + (showChapters ? "active" : "")} onClick={() => setShowChapters(true)} title="Chapter List">
-          <List size={20} />
-        </div>
-        <div className="sidebar-icon" style={{ marginTop: 'auto', marginBottom: '20px' }}>
-          <Settings size={20} />
-        </div>
-      </div>
+        <button className="quiet-button curriculum-button" type="button" onClick={openCurriculum}>
+          <List size={17} /> Curriculum
+        </button>
+        <button className="icon-button curriculum-icon" type="button" aria-label="Open curriculum" onClick={openCurriculum}>
+          <Menu size={20} />
+        </button>
+      </header>
 
-      {/* Lesson Content Pane */}
-      <div className="content-pane">
-        <div className="progress-container">
-          <div className="progress-bar" style={{ width: progressPercentage + "%" }}></div>
-        </div>
-        <div className="progress-text">{progressPercentage}% Completed</div>
-
-        {showChapters ? (
-          <div className="chapter-list-pane">
-            <div className="chapter-header">
-              <h1 className="chapter-title">Table of Contents</h1>
-            </div>
-            <div className="chapter-list">
-              {chapters.map((c) => (
-                <div 
-                  key={c.id} 
-                  className={"chapter-list-item " + (c.id === chapter.id ? "active" : "")}
-                  onClick={() => { setChapter(c.id); setShowChapters(false); }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div className="chapter-list-tag">{c.tag}</div>
-                      <div className="chapter-list-title">{c.title}</div>
-                    </div>
-                    {completedChapters[c.id] && <CheckCircle size={20} color="#10b981" />}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="chapter-header">
-              <span className="chapter-tag">{chapter.tag}</span>
-              <h1 className="chapter-title">{chapter.title}</h1>
-            </div>
-            <div className="chapter-content">
-              <div dangerouslySetInnerHTML={{ __html: chapter.content }} />
-
-              <div className="challenge-box">
-                <div className="challenge-title">
-                  <CheckCircle size={18} color={completedChapters[chapter.id] ? "#10b981" : "#fbbf24"} />
-                  <span>Challenge: {chapter.challengeTitle}</span>
-                </div>
-                <div dangerouslySetInnerHTML={{ __html: chapter.challengeDescription }} />
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Editor & Terminal Pane */}
-      <div className="editor-pane">
-        <div className="editor-toolbar">
-          <div className="file-name">
-            <ChevronRight size={16} /> main.go
-          </div>
-          <button className="run-btn" onClick={runCode} disabled={isRunning}>
-            <Play size={16} fill="currentColor" /> {isRunning ? 'Running...' : 'Run Code'}
+      <nav className="mobile-tabs" aria-label="Lab workspace">
+        {([
+          ['learn', BookOpen, 'Learn'],
+          ['code', Code2, 'Code'],
+          ['result', TerminalSquare, 'Result'],
+        ] as const).map(([id, Icon, label]) => (
+          <button key={id} type="button" className={mobileTab === id ? 'active' : ''} onClick={() => setMobileTab(id)}>
+            <Icon size={16} /> {label}
+            {id === 'result' && result?.status === 'passed' ? <Check size={14} /> : null}
           </button>
-        </div>
-        
-        <div style={{ flex: 1 }}>
-          <Editor
-            height="100%"
-            defaultLanguage="go"
-            theme="vs-dark"
-            value={code}
-            onChange={handleEditorChange}
-            options={{
-              minimap: { enabled: false },
-              fontSize: 14,
-              fontFamily: "'JetBrains Mono', monospace",
-              padding: { top: 16 },
-              scrollBeyondLastLine: false,
-            }}
-          />
-        </div>
+        ))}
+      </nav>
 
-        <div className="terminal-pane">
-          <div className="terminal-header">Output Console</div>
-          <div style={{ whiteSpace: 'pre-wrap' }}>
-            {output}
+      <main className="workspace">
+        <article className={`lesson-pane ${mobileTab === 'learn' ? 'mobile-active' : ''}`}>
+          <div className="lesson-inner">
+            <div className="chapter-kicker">
+              <span>{courseModules.find((item) => item.id === chapter.module)?.title}</span>
+              <span>Lab {chapter.order} of {chapters.length}</span>
+            </div>
+            <h1>{chapter.title}</h1>
+            <p className="mental-model"><span>The old instinct</span>{chapter.mentalModel}</p>
+
+            <section className="orientation" aria-labelledby="outcome-heading">
+              <div>
+                <FlaskConical size={18} aria-hidden="true" />
+                <p><strong id="outcome-heading">By the end</strong>{chapter.outcome}</p>
+              </div>
+              <div>
+                <Lightbulb size={18} aria-hidden="true" />
+                <p><strong>Recognition cue</strong>{chapter.recognitionCue}</p>
+              </div>
+            </section>
+
+            <section className="prediction-card" aria-labelledby="prediction-heading">
+              <span className="step-label">01 · Predict before running</span>
+              <h2 id="prediction-heading">{chapter.prediction.prompt}</h2>
+              {chapter.prediction.code ? <pre><code>{chapter.prediction.code}</code></pre> : null}
+              <fieldset disabled={predictionChecked}>
+                <legend className="sr-only">Choose your prediction</legend>
+                {chapter.prediction.options.map((option) => (
+                  <label key={option.id} className={selectedPrediction === option.id ? 'selected' : ''}>
+                    <input
+                      type="radio"
+                      name={`prediction-${chapter.id}`}
+                      value={option.id}
+                      checked={selectedPrediction === option.id}
+                      onChange={() => selectPrediction(chapter.id, option.id)}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </fieldset>
+              {!predictionChecked ? (
+                <button className="secondary-button" type="button" disabled={!selectedPrediction} onClick={() => checkPrediction(chapter.id)}>
+                  Commit prediction
+                </button>
+              ) : (
+                <div className={`prediction-feedback ${predictionCorrect ? 'correct' : 'incorrect'}`} role="status">
+                  {predictionCorrect ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
+                  <p><strong>{predictionCorrect ? 'That is the shift.' : 'Useful miss.'}</strong>{selectedOption?.explanation}</p>
+                </div>
+              )}
+            </section>
+
+            <section className="prose-section" aria-labelledby="rule-heading">
+              <span className="step-label">02 · See the rule</span>
+              <h2 id="rule-heading">What Go is actually doing</h2>
+              <div className="lesson-prose" dangerouslySetInnerHTML={{ __html: chapter.lesson }} />
+            </section>
+
+            <section className="challenge-card" aria-labelledby="challenge-heading">
+              <span className="step-label">03 · Prove it in code</span>
+              <h2 id="challenge-heading">{chapter.challenge.title}</h2>
+              <p dangerouslySetInnerHTML={{ __html: chapter.challenge.description }} />
+              <button className="primary-button mobile-code-cta" type="button" onClick={() => setMobileTab('code')}>
+                Open code lab <ArrowRight size={17} />
+              </button>
+            </section>
+
+            <section className="hints" aria-labelledby="hints-heading">
+              <div className="section-row">
+                <div><span className="step-label">Need a nudge?</span><h2 id="hints-heading">Progressive hints</h2></div>
+                {revealedHints < chapter.hints.length ? (
+                  <button className="text-button" type="button" onClick={() => revealHint(chapter.id, revealedHints + 1)}>
+                    Reveal hint {revealedHints + 1}
+                  </button>
+                ) : null}
+              </div>
+              {revealedHints === 0 ? <p className="muted">Try the lab once before opening a hint. Your code will be preserved.</p> : null}
+              <ol>
+                {chapter.hints.slice(0, revealedHints).map((hint, index) => (
+                  <li key={hint}><span>{index + 1}</span><p dangerouslySetInnerHTML={{ __html: hint }} /></li>
+                ))}
+              </ol>
+            </section>
+
+            {result?.status === 'passed' || completion ? (
+              <section className="debrief-card" aria-labelledby="debrief-heading">
+                <span className="step-label">04 · Carry it forward</span>
+                <h2 id="debrief-heading">{chapter.debrief.title}</h2>
+                <p>{chapter.debrief.summary}</p>
+                <div className="transfer-question"><strong>Transfer question</strong><p>{chapter.debrief.transfer}</p></div>
+                {nextChapter ? (
+                  <button className="primary-button" type="button" onClick={() => goToChapter(nextChapter.id)}>
+                    Next lab: {nextChapter.title} <ArrowRight size={17} />
+                  </button>
+                ) : (
+                  <button className="secondary-button" type="button" onClick={openCurriculum}>
+                    Return to curriculum <List size={17} />
+                  </button>
+                )}
+              </section>
+            ) : null}
           </div>
+        </article>
+
+        <section className={`lab-pane ${mobileTab === 'code' || mobileTab === 'result' ? 'mobile-active' : ''}`} aria-label="Code lab">
+          <div className="lab-toolbar">
+            <div className="file-tab"><ChevronRight size={15} /> main.go</div>
+            <div className={`runtime-state ${runtimeState}`}>
+              <span /> {runtimeState === 'ready' ? 'Go ready' : runtimeState === 'loading' ? 'Loading Go…' : 'Runtime unavailable'}
+            </div>
+            <button className="quiet-button" type="button" onClick={resetLab}><RotateCcw size={15} /> Reset</button>
+            <button
+              className="run-button"
+              type="button"
+              disabled={!predictionChecked || runtimeState !== 'ready' || isRunning}
+              onClick={runCode}
+              title={!predictionChecked ? 'Commit your prediction first' : undefined}
+            >
+              {isRunning ? <LoaderCircle className="spin" size={17} /> : <Play size={17} fill="currentColor" />}
+              {isRunning ? 'Running tests…' : 'Run tests'}
+            </button>
+          </div>
+
+          <div className={`editor-region ${mobileTab === 'result' ? 'mobile-hidden' : ''}`}>
+            <Editor
+              height="100%"
+              defaultLanguage="go"
+              theme="vs-dark"
+              value={code}
+              onChange={(value) => value !== undefined && saveCodeSnippet(chapter.id, value)}
+              loading={<div className="editor-loading">Loading editor…</div>}
+              options={{
+                minimap: { enabled: false },
+                fontSize: 14,
+                fontFamily: "'JetBrains Mono', 'SFMono-Regular', Consolas, monospace",
+                lineHeight: 22,
+                padding: { top: 18, bottom: 18 },
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+              }}
+            />
+          </div>
+
+          <section className={`results-panel ${mobileTab === 'result' ? 'mobile-expanded' : ''}`} aria-labelledby="results-heading" aria-live="polite">
+            <div className="results-heading-row">
+              <div>
+                <span className="eyebrow">Behavioral tests</span>
+                <h2 id="results-heading">
+                  {!result ? 'Your evidence will appear here' : result.status === 'passed' ? 'All tests passed' : result.status === 'failed' ? 'Some behavior still differs' : result.status === 'compile_error' ? 'The program did not compile' : 'The run could not finish'}
+                </h2>
+              </div>
+              <span className="attempt-count">{attempts[chapter.id] ?? 0} {(attempts[chapter.id] ?? 0) === 1 ? 'attempt' : 'attempts'}</span>
+            </div>
+
+            {!predictionChecked ? (
+              <div className="empty-result"><Circle size={18} /><p>Commit the prediction in the lesson to unlock the lab.</p></div>
+            ) : !result ? (
+              <div className="test-preview">
+                {chapter.testNames.map((name) => <span key={name}><Circle size={15} />{name}</span>)}
+              </div>
+            ) : (
+              <>
+                {result.error ? <pre className="error-output"><code>{result.error}</code></pre> : null}
+                <div className="test-results">
+                  {result.tests.map((test) => (
+                    <div key={test.name} className={test.passed ? 'pass' : 'fail'}>
+                      {test.passed ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
+                      <p><strong>{test.name}</strong><span>{test.message}</span></p>
+                    </div>
+                  ))}
+                </div>
+                {result.stdout ? <details><summary>Program output</summary><pre><code>{result.stdout}</code></pre></details> : null}
+                {result.status === 'passed' ? (
+                  <button className="primary-button mobile-debrief-cta" type="button" onClick={() => setMobileTab('learn')}>
+                    Read the debrief <ArrowRight size={17} />
+                  </button>
+                ) : null}
+              </>
+            )}
+          </section>
+        </section>
+      </main>
+
+      {curriculumOpen ? (
+        <div className="drawer-backdrop" role="presentation" onMouseDown={closeCurriculum}>
+          <aside className="curriculum-drawer" role="dialog" aria-modal="true" aria-label="Course curriculum" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="drawer-header"><div><span className="eyebrow">The Go Shift</span><h2>Curriculum</h2></div><button ref={curriculumCloseRef} className="icon-button" type="button" aria-label="Close curriculum" onClick={closeCurriculum}>×</button></div>
+            {courseModules.map((module) => {
+              const moduleChapters = chapters.filter((item) => item.module === module.id);
+              return (
+                <section key={module.id} className="module-group">
+                  <h3>{module.title}</h3>
+                  <p>{module.description}</p>
+                  <ol>
+                    {moduleChapters.map((item) => (
+                      <li key={item.id}>
+                        <button type="button" className={item.id === chapter.id ? 'current' : ''} onClick={() => goToChapter(item.id)}>
+                          <span>{completions[item.id] ? <Check size={14} /> : item.order}</span>
+                          <span><strong>{item.title}</strong><small>{item.recognitionCue}</small></span>
+                        </button>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              );
+            })}
+          </aside>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

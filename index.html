@@ -2,21 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Book13 - Go Interactive</title>
-    <script src="/wasm_exec.js"></script>
-    <script>
-      if (typeof WebAssembly !== 'undefined') {
-        const go = new Go();
-        WebAssembly.instantiateStreaming(fetch("/yaegi.wasm"), go.importObject)
-          .then((result) => {
-            go.run(result.instance);
-            console.log("Go WASM Initialized!");
-          })
-          .catch(err => console.error("WASM Initialization Error:", err));
-      }
-    </script>
+    <meta name="description" content="Twelve small labs for experienced developers learning to think in Go." />
+    <title>The Go Shift — Learn the decisions behind idiomatic Go</title>
   </head>
   <body>
     <div id="root"></div>

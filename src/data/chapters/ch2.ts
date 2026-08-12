@@ -2,70 +2,113 @@ import type { Chapter } from '../types';
 
 export const ch2: Chapter = {
   id: 'ch2',
-  tag: 'Chapter 2',
-  title: 'Error Handling & Panics',
-  content: `
-    <p>Unlike languages like Java, Python, or C#, Go does not use exception-handling constructs like <code>try/catch/finally</code>.</p>
-    <p>In Go, <strong>errors are values</strong>. Functions that can fail return an <code>error</code> interface type as their last return value. This design forces developers to handle potential failure states explicitly right where they occur, creating clear, linear control flow without hidden exception jumps.</p>
-    <h3>Why Panics Should Be Avoided</h3>
-    <p>Go provides a built-in <code>panic</code> function, but it is <strong>not</strong> intended for standard application error handling. When a panic occurs, normal execution stops, the stack unwinds, and the goroutine crashes unless explicit recovery is implemented.</p>
-    <p>In production Go code, <code>panic</code> should be strictly reserved for unrecoverable state anomalies or programmer errors during application initialization (e.g., invalid startup configuration). Using <code>panic</code> for expected runtime failures like "user not found", invalid input, or network timeouts is an anti-pattern.</p>
+  order: 2,
+  module: 'think',
+  title: 'Errors: Failure Is Part of the Return Value',
+  mentalModel: 'An expected failure is data for the caller, not a hidden jump out of the current control flow.',
+  outcome: 'Return and handle an error for an expected missing result without panicking.',
+  recognitionCue: 'If a caller can reasonably retry, report, substitute, or add context, represent the failure with an error return.',
+  prediction: {
+    prompt: 'GetUser panics for a missing record. No deferred function recovers it. What happens after the call?',
+    code: `fmt.Println("before")
+user := GetUser(2)
+fmt.Println("user:", user)
+fmt.Println("after")`,
+    options: [
+      {
+        id: 'continues-empty',
+        label: 'It prints an empty user and continues',
+        explanation: 'panic does not turn into a zero value. It stops ordinary execution and begins unwinding the current goroutine’s stack.',
+      },
+      {
+        id: 'stops-program',
+        label: 'It prints before, then terminates',
+        explanation: 'Correct. With no recovery in a deferred function on that goroutine, the panic reaches the top and terminates the program.',
+      },
+      {
+        id: 'only-goroutine',
+        label: 'Only that goroutine quietly exits',
+        explanation: 'An unrecovered panic does not quietly discard one goroutine; reaching the top of a goroutine terminates the program.',
+      },
+    ],
+    correctOptionId: 'stops-program',
+  },
+  lesson: `
+    <p>Go functions commonly return a useful value followed by <code>error</code>. A nil error means the operation succeeded; a non-nil error lets the caller choose whether to return it, add context, retry, or present a fallback. The language does not force handling—you can discard a value—but the failure stays visible in the function’s contract.</p>
+    <p><code>panic</code> stops normal execution and unwinds the current goroutine, running deferred calls. If no deferred function on that same goroutine recovers it, the program terminates. That mechanism is useful for broken invariants and programmer faults, not an expected “user not found” result.</p>
+    <pre><code>user, err := GetUser(id)
+if err != nil {
+	return "Lookup failed: " + err.Error()
+}
+return "User: " + user</code></pre>
   `,
-  challengeTitle: 'Refactor Panic to Idiomatic Error',
-  challengeDescription: `
-    <p>The code in the editor currently uses <code>panic("user not found")</code> when an invalid user ID is provided.</p>
-    <p><strong>Task:</strong> Refactor <code>GetUser(id int)</code> to return <code>(string, error)</code> instead of panicking. If <code>id != 1</code>, return an empty string and <code>errors.New("user not found")</code>. Update <code>main()</code> to handle the error properly.</p>
-  `,
-  initialCode: `package main
+  challenge: {
+    title: 'Make the missing result explicit',
+    description: 'GetUser advertises an error return but currently reports a missing user as if the lookup succeeded with an empty name. Return errUserNotFound for every unknown ID so the caller can distinguish failure from valid data.',
+  },
+  starterCode: `package main
 
 import (
 	"errors"
 	"fmt"
 )
 
-// GetUser fetches a user by ID or panics if not found.
-func GetUser(id int) string {
+var errUserNotFound = errors.New("user not found")
+
+func GetUser(id int) (string, error) {
 	if id != 1 {
-		panic("user not found")
+		// BUG: nil incorrectly tells the caller this lookup succeeded.
+		return "", nil
 	}
-	return "Alice"
+	return "Alice", nil
+}
+
+func userLabel(id int) string {
+	user, err := GetUser(id)
+	if err != nil {
+		return "Lookup failed: " + err.Error()
+	}
+	return "User: " + user
 }
 
 func main() {
-	user := GetUser(2)
-	fmt.Println("User:", user)
-}
-`,
-  validate: (code: string) => {
-    // Check if panic keyword is still used
-    if (/\bpanic\b/.test(code)) {
-      return {
-        success: false,
-        message: '❌ Challenge not solved: Your code still uses the `panic` keyword. Refactor `GetUser` to return an `error` instead of panicking.'
-      };
-    }
-
-    // Check if error type is in GetUser signature
-    const hasErrorReturn = /func\s+GetUser\s*\([^)]*\)\s*\([^)]*error[^)]*\)|func\s+GetUser\s*\([^)]*\)\s*\(?.*error.*\)?/.test(code);
-    if (!hasErrorReturn) {
-      return {
-        success: false,
-        message: '❌ Challenge not solved: `GetUser` function signature must return `(string, error)` or an `error` interface.'
-      };
-    }
-
-    // Check if proper error construction is used
-    const usesErrorFunc = code.includes('errors.New') || code.includes('fmt.Errorf');
-    if (!usesErrorFunc) {
-      return {
-        success: false,
-        message: '❌ Challenge not solved: Make sure to return a proper error using `errors.New("user not found")` or `fmt.Errorf(...)`.'
-      };
-    }
-
-    return {
-      success: true,
-      message: '✅ Success! You refactored panic into an explicit error return value.\n\nIn Go, returning `(T, error)` is the idiomatic pattern for error handling. It promotes explicit error checking and prevents unexpected runtime crashes.'
-    };
-  }
+	fmt.Println(userLabel(1))
+}`,
+  hiddenTestCode: `func() {
+	user, err := GetUser(1)
+	if user == "Alice" && err == nil {
+		println("__GO_SHIFT_TEST__\tPASS\tsuccessful lookup\tA successful lookup returns Alice and a nil error.")
+	} else {
+		println("__GO_SHIFT_TEST__\tFAIL\tsuccessful lookup\tID 1 must still return Alice with a nil error.")
+	}
+	user, err = GetUser(2)
+	if user == "" && err != nil && err.Error() == "user not found" {
+		println("__GO_SHIFT_TEST__\tPASS\tmissing user error\tThe expected failure is represented by the returned error.")
+	} else {
+		println("__GO_SHIFT_TEST__\tFAIL\tmissing user error\tReturn an empty name and the user-not-found error for an unknown ID.")
+	}
+	zeroUser, zeroErr := GetUser(0)
+	largeUser, largeErr := GetUser(99)
+	if zeroUser == "" && zeroErr != nil && largeUser == "" && largeErr != nil {
+		println("__GO_SHIFT_TEST__\tPASS\tall unknown IDs\tEvery unknown ID follows the same explicit failure contract.")
+	} else {
+		println("__GO_SHIFT_TEST__\tFAIL\tall unknown IDs\tReturn a non-nil error for every ID other than 1, not only the example ID.")
+	}
+	if userLabel(1) == "User: Alice" && userLabel(2) == "Lookup failed: user not found" {
+		println("__GO_SHIFT_TEST__\tPASS\tcaller handles error\tThe caller can choose a success or failure message explicitly.")
+	} else {
+		println("__GO_SHIFT_TEST__\tFAIL\tcaller handles error\tKeep both the success value and returned error usable by the caller.")
+	}
+}()`,
+  testNames: ['successful lookup', 'missing user error', 'all unknown IDs', 'caller handles error'],
+  hints: [
+    'The function signature already returns <code>(string, error)</code>. A nil error promises success, even when the useful value is empty.',
+    'The missing branch should return the zero value for the name together with a non-nil error: <code>return "", ...</code>.',
+    'Use the existing sentinel value: <code>return "", errUserNotFound</code>. Leave <code>userLabel</code> to decide how the error is presented.',
+  ],
+  debrief: {
+    title: 'The shift: expected failure stays in the contract',
+    summary: 'Returning an error preserves normal control flow and gives each caller a local decision. Panic is a stack-unwinding mechanism, not a replacement for an expected result that callers can handle.',
+    transfer: 'A parser sees malformed user input in one case and reaches an internal state its own code says is impossible in another. Which should return an error, and which might justify a panic?',
+  },
 };

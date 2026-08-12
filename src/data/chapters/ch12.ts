@@ -2,65 +2,154 @@ import type { Chapter } from '../types';
 
 export const ch12: Chapter = {
   id: 'ch12',
-  tag: 'Chapter 12',
-  title: 'Enterprise: Dependency Injection',
-  content: `
-    <p>Junior Go developers often hardcode dependencies. For example, a <code>UserService</code> might directly instantiate a SQL database connection. This makes unit testing impossible without spinning up a real database container.</p>
-    <p>Enterprise Go solves this with <strong>Interfaces and Dependency Injection</strong>. You define an interface describing what the database <em>does</em>, and pass that interface into your service struct.</p>
-    <p>In Go, interfaces are implicit. If a struct implements all the methods of an interface, it automatically satisfies it. No <code>implements</code> keyword required!</p>
-  `,
-  challengeTitle: 'Decoupling with Interfaces',
-  challengeDescription: `
-    <p><strong>Task:</strong> The <code>UserService</code> currently hardcodes a dependency on <code>RealDB</code>. Refactor it to accept a <code>DataStore</code> interface instead. Then, implement a <code>MockDB</code> struct so the test in <code>main()</code> passes instantly without hitting a real database.</p>
-  `,
-  initialCode: `package main
+  order: 12,
+  module: 'ship',
+  title: 'Interfaces Belong to Consumers',
+  mentalModel: 'A dependency should publish a broad interface so downstream code can mock it.',
+  outcome: 'Define a narrow behavior boundary where it is consumed and substitute a test implementation without a framework or implements declaration.',
+  recognitionCue: 'Introduce an interface when a consumer needs behavior from more than one implementation, and include only the methods that consumer calls.',
+  prediction: {
+    prompt: 'MemoryStore declares no relationship to UserReader. Does the assignment compile?',
+    code: `type UserReader interface {
+	UserName(id int) (string, error)
+}
 
-import "fmt"
+type MemoryStore struct{}
 
-// --- Infrastructure Layer ---
+func (MemoryStore) UserName(id int) (string, error) {
+	return "Ada", nil
+}
+
+var reader UserReader = MemoryStore{}`,
+    options: [
+      {
+        id: 'implements-needed',
+        label: 'No — it needs implements',
+        explanation: 'Go has no implements declaration. Satisfaction is determined from the method set.',
+      },
+      {
+        id: 'implicit',
+        label: 'Yes — the method is enough',
+        explanation: 'Correct. MemoryStore’s method set satisfies the consumer’s one-method interface implicitly.',
+      },
+      {
+        id: 'same-package-only',
+        label: 'Only in the same package',
+        explanation: 'Implicit satisfaction works across package boundaries. Export rules affect visibility, not the implements relationship.',
+      },
+    ],
+    correctOptionId: 'implicit',
+  },
+  lesson: `
+    <p>Dependency injection in Go is usually ordinary construction: pass a dependency into a function or struct. It can be a concrete type. Add an interface only when the consuming code benefits from a behavior boundary.</p>
+    <p>Because interfaces are satisfied implicitly, the consumer can describe only what it needs:</p>
+    <pre><code>type UserStore interface {
+	UserName(id int) (string, error)
+}</code></pre>
+    <p>The database package can keep returning a concrete type. The service owns the small interface, and a test can supply a local fake with the same method. Avoid defining speculative producer-side interfaces solely “for mocking”; concrete dependencies are simpler when no substitution is needed.</p>
+  `,
+  challenge: {
+    title: 'Move the boundary to the service',
+    description: 'Define the one-method <code>UserStore</code> interface and refactor <code>UserService</code> plus <code>NewUserService</code> to accept it. Keep <code>Greeting</code> behavior unchanged: forward the requested ID, return <code>"Hello, " + name</code> on success, and propagate a store error.',
+  },
+  starterCode: `package main
+
+import (
+	"errors"
+	"fmt"
+)
+
 type RealDB struct{}
 
-func (db *RealDB) GetUser(id int) string {
-	fmt.Println("Connecting to real Postgres... (slow!)")
-	return "RealAlice"
+func (RealDB) UserName(id int) (string, error) {
+	if id != 1 {
+		return "", errors.New("user not found")
+	}
+	return "Real Alice", nil
 }
 
-// --- Domain Layer ---
-// TODO: Define a DataStore interface with GetUser(id int) string
+// Define the service-owned UserStore interface here.
 
-// BUG: UserService is tightly coupled to RealDB!
 type UserService struct {
-	DB *RealDB // TODO: Change this to the DataStore interface
+	store RealDB
 }
 
-func (s *UserService) PrintUser(id int) {
-	fmt.Println("User:", s.DB.GetUser(id))
+func NewUserService(store RealDB) *UserService {
+	return &UserService{store: store}
 }
 
-// --- Testing Layer ---
-// TODO: Create a MockDB struct that returns "MockAlice"
+func (s *UserService) Greeting(id int) (string, error) {
+	name, err := s.store.UserName(id)
+	if err != nil {
+		return "", err
+	}
+	return "Hello, " + name, nil
+}
 
 func main() {
-	// TODO: Instantiate UserService with your MockDB
-	service := &UserService{
-		DB: &RealDB{}, 
-	}
-	service.PrintUser(1)
+	service := NewUserService(RealDB{})
+	greeting, err := service.Greeting(1)
+	fmt.Println(greeting, err)
 }`,
-  validate: (code: string) => {
-    const hasInterface = code.includes('type DataStore interface');
-    const hasMock = code.includes('type MockDB struct') || code.includes('MockDB');
-    const decoupling = code.includes('DB DataStore');
-    
-    if (hasInterface && hasMock && decoupling) {
-      return {
-        success: true,
-        message: `✅ Success! You decoupled the business logic from the infrastructure. This is the cornerstone of writing testable, robust enterprise Go code.`
-      };
-    }
-    return {
-      success: false,
-      message: `❌ Challenge not solved.\n\nHint: Create an interface, change the field in UserService to use it, and create a mock struct that returns "MockAlice".`
-    };
-  }
+  hiddenTestCode: `type goShiftMemoryStore struct {
+	users map[int]string
+	requested []int
+}
+
+func (store *goShiftMemoryStore) UserName(id int) (string, error) {
+	store.requested = append(store.requested, id)
+	name, ok := store.users[id]
+	if !ok {
+		return "", errors.New("missing test user")
+	}
+	return name, nil
+}
+
+var goShiftInterfaceTestsRan = func() bool {
+	fake := &goShiftMemoryStore{users: map[int]string{7: "Grace", 42: "Lin"}}
+	service := NewUserService(fake)
+	if greeting, err := service.Greeting(7); greeting == "Hello, Grace" && err == nil {
+		println("__GO_SHIFT_TEST__\tPASS\tconsumer substitute\tAccepted a test-local implementation through the service boundary.")
+	} else {
+		println("__GO_SHIFT_TEST__\tFAIL\tconsumer substitute\tGreeting should use the injected store and return Hello, Grace.")
+	}
+
+	if len(fake.requested) == 1 && fake.requested[0] == 7 {
+		println("__GO_SHIFT_TEST__\tPASS\tforwards id\tAsked the dependency for the caller’s exact user ID.")
+	} else {
+		println("__GO_SHIFT_TEST__\tFAIL\tforwards id\tForward the requested ID to store.UserName exactly once.")
+	}
+
+	if greeting, err := service.Greeting(42); greeting == "Hello, Lin" && err == nil {
+		println("__GO_SHIFT_TEST__\tPASS\tvarying data\tUsed dependency behavior rather than a hard-coded user name.")
+	} else {
+		println("__GO_SHIFT_TEST__\tFAIL\tvarying data\tBuild the greeting from the name returned by the injected store.")
+	}
+
+	if greeting, err := service.Greeting(99); greeting == "" && err != nil {
+		println("__GO_SHIFT_TEST__\tPASS\terror path\tPropagated the dependency error without inventing a greeting.")
+	} else {
+		println("__GO_SHIFT_TEST__\tFAIL\terror path\tWhen UserName fails, return an empty greeting and the error.")
+	}
+
+	realService := NewUserService(RealDB{})
+	if greeting, err := realService.Greeting(1); greeting == "Hello, Real Alice" && err == nil {
+		println("__GO_SHIFT_TEST__\tPASS\treal implementation\tThe same narrow boundary still accepts the production dependency.")
+	} else {
+		println("__GO_SHIFT_TEST__\tFAIL\treal implementation\tThe refactor should preserve RealDB behavior.")
+	}
+return true
+}()`,
+  contractFailureMessage: 'The test substitute cannot enter the service yet. Change both the UserService field and NewUserService parameter from RealDB to the consumer-owned UserStore interface.',
+  testNames: ['consumer substitute', 'forwards id', 'varying data', 'error path', 'real implementation'],
+  hints: [
+    'Declare <code>type UserStore interface { UserName(id int) (string, error) }</code> next to the service that consumes it.',
+    'Change the <code>store</code> field from <code>RealDB</code> to <code>UserStore</code>. RealDB already satisfies that interface implicitly.',
+    'Change only the constructor parameter to <code>UserStore</code>. <code>Greeting</code> can keep calling <code>s.store.UserName(id)</code> exactly as before.',
+  ],
+  debrief: {
+    title: 'The shift: abstract at the point of need',
+    summary: 'Passing a dependency is already injection. A consumer-owned interface adds a narrow substitution boundary without coupling implementations to it. Both the real database and a test fake satisfy that boundary through their method sets.',
+    transfer: 'If UserService later needs only DeleteUser from a large generated database client, what is the smallest interface the service should own?',
+  },
 };

@@ -11,4 +11,5 @@ import { ch10 } from './ch10';
 import { ch11 } from './ch11';
 import { ch12 } from './ch12';
 
-export const chapters = [ch1, ch2, ch3, ch4, ch5, ch6, ch7, ch8, ch9, ch10, ch11, ch12];
+export const chapters = [ch1, ch2, ch4, ch10, ch6, ch5, ch7, ch8, ch11, ch3, ch9, ch12]
+  .sort((a, b) => a.order - b.order);
