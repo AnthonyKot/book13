@@ -306,7 +306,91 @@ func main() {
 	fmt.Println(string(header))
 }`,validate:e=>{let t=e.includes(`copy(`),n=e.includes(`append([]byte{},`);return t||n?{success:!0,message:`✅ Success! By explicitly allocating a new slice and copying the data, the original massive array has no active pointers and can be safely garbage collected.`}:{success:!1,message:`❌ Challenge not solved.
 
-Hint: Create a new slice (e.g., using make) of length 10, and use the built-in copy() function to transfer the bytes.`}}}],Ht=o((e=>{var t=Symbol.for(`react.transitional.element`),n=Symbol.for(`react.fragment`);function r(e,n,r){var i=null;if(r!==void 0&&(i=``+r),n.key!==void 0&&(i=``+n.key),`key`in n)for(var a in r={},n)a!==`key`&&(r[a]=n[a]);else r=n;return n=r.ref,{$$typeof:t,type:e,key:i,ref:n===void 0?null:n,props:r}}e.Fragment=n,e.jsx=r,e.jsxs=r})),j=o(((e,t)=>{t.exports=Ht()}))();function Ut(){let{currentChapterId:e,codeSnippets:t,completedChapters:n,saveCodeSnippet:r,setChapter:i,markChapterCompleted:a}=wt(),[o,s]=(0,_.useState)(`Run the code to see output...`),[c,l]=(0,_.useState)(!1),[u,d]=(0,_.useState)(!1),f=Vt[Vt.findIndex(t=>t.id===e)]||Vt[0],p=t[f.id]===void 0?f.initialCode:t[f.id],m=Vt.length,h=Object.keys(n).filter(e=>n[e]).length,g=Math.round(h/m*100);return(0,_.useEffect)(()=>{s(`Run the code to see output...`)},[f.id]),(0,j.jsxs)(`div`,{className:`app-container`,children:[(0,j.jsxs)(`div`,{className:`sidebar`,children:[(0,j.jsx)(`div`,{className:`sidebar-icon `+(u?``:`active`),onClick:()=>d(!1),title:`Current Lesson`,children:(0,j.jsx)(Ft,{size:20})}),(0,j.jsx)(`div`,{className:`sidebar-icon `+(u?`active`:``),onClick:()=>d(!0),title:`Chapter List`,children:(0,j.jsx)(Rt,{size:20})}),(0,j.jsx)(`div`,{className:`sidebar-icon`,style:{marginTop:`auto`,marginBottom:`20px`},children:(0,j.jsx)(Bt,{size:20})})]}),(0,j.jsxs)(`div`,{className:`content-pane`,children:[(0,j.jsx)(`div`,{className:`progress-container`,children:(0,j.jsx)(`div`,{className:`progress-bar`,style:{width:g+`%`}})}),(0,j.jsxs)(`div`,{className:`progress-text`,children:[g,`% Completed`]}),u?(0,j.jsxs)(`div`,{className:`chapter-list-pane`,children:[(0,j.jsx)(`div`,{className:`chapter-header`,children:(0,j.jsx)(`h1`,{className:`chapter-title`,children:`Table of Contents`})}),(0,j.jsx)(`div`,{className:`chapter-list`,children:Vt.map(e=>(0,j.jsx)(`div`,{className:`chapter-list-item `+(e.id===f.id?`active`:``),onClick:()=>{i(e.id),d(!1)},children:(0,j.jsxs)(`div`,{style:{display:`flex`,justifyContent:`space-between`,alignItems:`center`},children:[(0,j.jsxs)(`div`,{children:[(0,j.jsx)(`div`,{className:`chapter-list-tag`,children:e.tag}),(0,j.jsx)(`div`,{className:`chapter-list-title`,children:e.title})]}),n[e.id]&&(0,j.jsx)(Lt,{size:20,color:`#10b981`})]})},e.id))})]}):(0,j.jsxs)(j.Fragment,{children:[(0,j.jsxs)(`div`,{className:`chapter-header`,children:[(0,j.jsx)(`span`,{className:`chapter-tag`,children:f.tag}),(0,j.jsx)(`h1`,{className:`chapter-title`,children:f.title})]}),(0,j.jsxs)(`div`,{className:`chapter-content`,children:[(0,j.jsx)(`div`,{dangerouslySetInnerHTML:{__html:f.content}}),(0,j.jsxs)(`div`,{className:`challenge-box`,children:[(0,j.jsxs)(`div`,{className:`challenge-title`,children:[(0,j.jsx)(Lt,{size:18,color:n[f.id]?`#10b981`:`#fbbf24`}),(0,j.jsxs)(`span`,{children:[`Challenge: `,f.challengeTitle]})]}),(0,j.jsx)(`div`,{dangerouslySetInnerHTML:{__html:f.challengeDescription}})]})]})]})]}),(0,j.jsxs)(`div`,{className:`editor-pane`,children:[(0,j.jsxs)(`div`,{className:`editor-toolbar`,children:[(0,j.jsxs)(`div`,{className:`file-name`,children:[(0,j.jsx)(It,{size:16}),` main.go`]}),(0,j.jsxs)(`button`,{className:`run-btn`,onClick:()=>{l(!0),s(`Executing via WebAssembly...
+Hint: Create a new slice (e.g., using make) of length 10, and use the built-in copy() function to transfer the bytes.`}}},{id:`ch11`,tag:`Chapter 11`,title:`Enterprise: Context & Timeouts`,content:`
+    <p>In enterprise Go services, <strong>every</strong> function that does I/O (database, network, file) must accept a <code>context.Context</code> as its first parameter.</p>
+    <p>Context serves two critical purposes: <strong>Cancellation/Timeouts</strong> and <strong>Request-scoped Values</strong>.</p>
+    <h3>Timeouts</h3>
+    <p>If a client drops their connection, or a downstream microservice is hanging, you don't want your server to block forever. <code>context.WithTimeout</code> allows you to guarantee a function will return an error if it takes too long.</p>
+  `,challengeTitle:`Protecting the Database with Context`,challengeDescription:`
+    <p><strong>Task:</strong> The <code>FetchUser</code> function simulates a slow database query taking 100ms. Wrap it in a function called <code>SafeFetch</code> that uses <code>context.WithTimeout</code> to enforce a strict 50ms deadline.</p>
+  `,initialCode:`package main
+
+import (
+	"context"
+	"fmt"
+	"time"
+)
+
+// Simulates a slow database query
+func FetchUser(ctx context.Context) (string, error) {
+	select {
+	case <-time.After(100 * time.Millisecond):
+		return "Alice", nil
+	case <-ctx.Done():
+		return "", ctx.Err()
+	}
+}
+
+func SafeFetch() {
+	// TODO: Create a context with a 50ms timeout
+	ctx := context.Background() 
+	
+	// TODO: Pass the timeout context to FetchUser
+	user, err := FetchUser(ctx)
+	
+	if err != nil {
+		fmt.Println("Query failed:", err)
+		return
+	}
+	fmt.Println("Success:", user)
+}
+
+func main() {
+	SafeFetch()
+}`,validate:e=>{let t=e.includes(`context.WithTimeout(`)&&e.includes(`50*time.Millisecond`)&&!e.includes(`50 * time.Millisecond`),n=e.includes(`context.WithTimeout(`)&&e.includes(`50 * time.Millisecond`),r=e.includes(`defer cancel()`);return(t||n)&&r?{success:!0,message:`✅ Success! The context gracefully aborted the slow query. In production, failing fast is much better than exhausting all your server's connections!`}:{success:!1,message:`❌ Challenge not solved.
+
+Hint: Use ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond). Don't forget to defer cancel()!`}}},{id:`ch12`,tag:`Chapter 12`,title:`Enterprise: Dependency Injection`,content:`
+    <p>Junior Go developers often hardcode dependencies. For example, a <code>UserService</code> might directly instantiate a SQL database connection. This makes unit testing impossible without spinning up a real database container.</p>
+    <p>Enterprise Go solves this with <strong>Interfaces and Dependency Injection</strong>. You define an interface describing what the database <em>does</em>, and pass that interface into your service struct.</p>
+    <p>In Go, interfaces are implicit. If a struct implements all the methods of an interface, it automatically satisfies it. No <code>implements</code> keyword required!</p>
+  `,challengeTitle:`Decoupling with Interfaces`,challengeDescription:`
+    <p><strong>Task:</strong> The <code>UserService</code> currently hardcodes a dependency on <code>RealDB</code>. Refactor it to accept a <code>DataStore</code> interface instead. Then, implement a <code>MockDB</code> struct so the test in <code>main()</code> passes instantly without hitting a real database.</p>
+  `,initialCode:`package main
+
+import "fmt"
+
+// --- Infrastructure Layer ---
+type RealDB struct{}
+
+func (db *RealDB) GetUser(id int) string {
+	fmt.Println("Connecting to real Postgres... (slow!)")
+	return "RealAlice"
+}
+
+// --- Domain Layer ---
+// TODO: Define a DataStore interface with GetUser(id int) string
+
+// BUG: UserService is tightly coupled to RealDB!
+type UserService struct {
+	DB *RealDB // TODO: Change this to the DataStore interface
+}
+
+func (s *UserService) PrintUser(id int) {
+	fmt.Println("User:", s.DB.GetUser(id))
+}
+
+// --- Testing Layer ---
+// TODO: Create a MockDB struct that returns "MockAlice"
+
+func main() {
+	// TODO: Instantiate UserService with your MockDB
+	service := &UserService{
+		DB: &RealDB{}, 
+	}
+	service.PrintUser(1)
+}`,validate:e=>{let t=e.includes(`type DataStore interface`),n=e.includes(`type MockDB struct`)||e.includes(`MockDB`),r=e.includes(`DB DataStore`);return t&&n&&r?{success:!0,message:`✅ Success! You decoupled the business logic from the infrastructure. This is the cornerstone of writing testable, robust enterprise Go code.`}:{success:!1,message:`❌ Challenge not solved.
+
+Hint: Create an interface, change the field in UserService to use it, and create a mock struct that returns "MockAlice".`}}}],Ht=o((e=>{var t=Symbol.for(`react.transitional.element`),n=Symbol.for(`react.fragment`);function r(e,n,r){var i=null;if(r!==void 0&&(i=``+r),n.key!==void 0&&(i=``+n.key),`key`in n)for(var a in r={},n)a!==`key`&&(r[a]=n[a]);else r=n;return n=r.ref,{$$typeof:t,type:e,key:i,ref:n===void 0?null:n,props:r}}e.Fragment=n,e.jsx=r,e.jsxs=r})),j=o(((e,t)=>{t.exports=Ht()}))();function Ut(){let{currentChapterId:e,codeSnippets:t,completedChapters:n,saveCodeSnippet:r,setChapter:i,markChapterCompleted:a}=wt(),[o,s]=(0,_.useState)(`Run the code to see output...`),[c,l]=(0,_.useState)(!1),[u,d]=(0,_.useState)(!1),f=Vt[Vt.findIndex(t=>t.id===e)]||Vt[0],p=t[f.id]===void 0?f.initialCode:t[f.id],m=Vt.length,h=Object.keys(n).filter(e=>n[e]).length,g=Math.round(h/m*100);return(0,_.useEffect)(()=>{s(`Run the code to see output...`)},[f.id]),(0,j.jsxs)(`div`,{className:`app-container`,children:[(0,j.jsxs)(`div`,{className:`sidebar`,children:[(0,j.jsx)(`div`,{className:`sidebar-icon `+(u?``:`active`),onClick:()=>d(!1),title:`Current Lesson`,children:(0,j.jsx)(Ft,{size:20})}),(0,j.jsx)(`div`,{className:`sidebar-icon `+(u?`active`:``),onClick:()=>d(!0),title:`Chapter List`,children:(0,j.jsx)(Rt,{size:20})}),(0,j.jsx)(`div`,{className:`sidebar-icon`,style:{marginTop:`auto`,marginBottom:`20px`},children:(0,j.jsx)(Bt,{size:20})})]}),(0,j.jsxs)(`div`,{className:`content-pane`,children:[(0,j.jsx)(`div`,{className:`progress-container`,children:(0,j.jsx)(`div`,{className:`progress-bar`,style:{width:g+`%`}})}),(0,j.jsxs)(`div`,{className:`progress-text`,children:[g,`% Completed`]}),u?(0,j.jsxs)(`div`,{className:`chapter-list-pane`,children:[(0,j.jsx)(`div`,{className:`chapter-header`,children:(0,j.jsx)(`h1`,{className:`chapter-title`,children:`Table of Contents`})}),(0,j.jsx)(`div`,{className:`chapter-list`,children:Vt.map(e=>(0,j.jsx)(`div`,{className:`chapter-list-item `+(e.id===f.id?`active`:``),onClick:()=>{i(e.id),d(!1)},children:(0,j.jsxs)(`div`,{style:{display:`flex`,justifyContent:`space-between`,alignItems:`center`},children:[(0,j.jsxs)(`div`,{children:[(0,j.jsx)(`div`,{className:`chapter-list-tag`,children:e.tag}),(0,j.jsx)(`div`,{className:`chapter-list-title`,children:e.title})]}),n[e.id]&&(0,j.jsx)(Lt,{size:20,color:`#10b981`})]})},e.id))})]}):(0,j.jsxs)(j.Fragment,{children:[(0,j.jsxs)(`div`,{className:`chapter-header`,children:[(0,j.jsx)(`span`,{className:`chapter-tag`,children:f.tag}),(0,j.jsx)(`h1`,{className:`chapter-title`,children:f.title})]}),(0,j.jsxs)(`div`,{className:`chapter-content`,children:[(0,j.jsx)(`div`,{dangerouslySetInnerHTML:{__html:f.content}}),(0,j.jsxs)(`div`,{className:`challenge-box`,children:[(0,j.jsxs)(`div`,{className:`challenge-title`,children:[(0,j.jsx)(Lt,{size:18,color:n[f.id]?`#10b981`:`#fbbf24`}),(0,j.jsxs)(`span`,{children:[`Challenge: `,f.challengeTitle]})]}),(0,j.jsx)(`div`,{dangerouslySetInnerHTML:{__html:f.challengeDescription}})]})]})]})]}),(0,j.jsxs)(`div`,{className:`editor-pane`,children:[(0,j.jsxs)(`div`,{className:`editor-toolbar`,children:[(0,j.jsxs)(`div`,{className:`file-name`,children:[(0,j.jsx)(It,{size:16}),` main.go`]}),(0,j.jsxs)(`button`,{className:`run-btn`,onClick:()=>{l(!0),s(`Executing via WebAssembly...
 
 `),setTimeout(()=>{let e=``;if(typeof window.runGoCode==`function`)try{e=window.runGoCode(p)}catch(t){e=`WASM Execution Error: `+t}else e=`WASM engine is still loading... please try again in a moment.`;let t=f.validate(p);t.success&&a(f.id),s(`[Terminal Output]
 `+e+`
