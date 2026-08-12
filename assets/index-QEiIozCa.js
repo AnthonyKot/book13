@@ -237,7 +237,76 @@ func main() {
 	heap.Init(h)
 	heap.Push(h, 3)
 	fmt.Printf("minimum: %d\\n", (*h)[0]) // Should be 1
-}`,validate:e=>e.includes(`Len()`)&&e.includes(`Less(`)&&e.includes(`Swap(`)&&e.includes(`Push(`)&&e.includes(`Pop()`)?{success:!0,message:`✅ Success! Memorizing the heap.Interface boilerplate is an absolute must for Go interviews.`}:{success:!1,message:`❌ Challenge not solved. Ensure you implemented Len, Less, Swap, Push, and Pop.`}}],Ht=o((e=>{var t=Symbol.for(`react.transitional.element`),n=Symbol.for(`react.fragment`);function r(e,n,r){var i=null;if(r!==void 0&&(i=``+r),n.key!==void 0&&(i=``+n.key),`key`in n)for(var a in r={},n)a!==`key`&&(r[a]=n[a]);else r=n;return n=r.ref,{$$typeof:t,type:e,key:i,ref:n===void 0?null:n,props:r}}e.Fragment=n,e.jsx=r,e.jsxs=r})),j=o(((e,t)=>{t.exports=Ht()}))();function Ut(){let{currentChapterId:e,codeSnippets:t,completedChapters:n,saveCodeSnippet:r,setChapter:i,markChapterCompleted:a}=wt(),[o,s]=(0,_.useState)(`Run the code to see output...`),[c,l]=(0,_.useState)(!1),[u,d]=(0,_.useState)(!1),f=Vt[Vt.findIndex(t=>t.id===e)]||Vt[0],p=t[f.id]===void 0?f.initialCode:t[f.id],m=Vt.length,h=Object.keys(n).filter(e=>n[e]).length,g=Math.round(h/m*100);return(0,_.useEffect)(()=>{s(`Run the code to see output...`)},[f.id]),(0,j.jsxs)(`div`,{className:`app-container`,children:[(0,j.jsxs)(`div`,{className:`sidebar`,children:[(0,j.jsx)(`div`,{className:`sidebar-icon `+(u?``:`active`),onClick:()=>d(!1),title:`Current Lesson`,children:(0,j.jsx)(Ft,{size:20})}),(0,j.jsx)(`div`,{className:`sidebar-icon `+(u?`active`:``),onClick:()=>d(!0),title:`Chapter List`,children:(0,j.jsx)(Rt,{size:20})}),(0,j.jsx)(`div`,{className:`sidebar-icon`,style:{marginTop:`auto`,marginBottom:`20px`},children:(0,j.jsx)(Bt,{size:20})})]}),(0,j.jsxs)(`div`,{className:`content-pane`,children:[(0,j.jsx)(`div`,{className:`progress-container`,children:(0,j.jsx)(`div`,{className:`progress-bar`,style:{width:g+`%`}})}),(0,j.jsxs)(`div`,{className:`progress-text`,children:[g,`% Completed`]}),u?(0,j.jsxs)(`div`,{className:`chapter-list-pane`,children:[(0,j.jsx)(`div`,{className:`chapter-header`,children:(0,j.jsx)(`h1`,{className:`chapter-title`,children:`Table of Contents`})}),(0,j.jsx)(`div`,{className:`chapter-list`,children:Vt.map(e=>(0,j.jsx)(`div`,{className:`chapter-list-item `+(e.id===f.id?`active`:``),onClick:()=>{i(e.id),d(!1)},children:(0,j.jsxs)(`div`,{style:{display:`flex`,justifyContent:`space-between`,alignItems:`center`},children:[(0,j.jsxs)(`div`,{children:[(0,j.jsx)(`div`,{className:`chapter-list-tag`,children:e.tag}),(0,j.jsx)(`div`,{className:`chapter-list-title`,children:e.title})]}),n[e.id]&&(0,j.jsx)(Lt,{size:20,color:`#10b981`})]})},e.id))})]}):(0,j.jsxs)(j.Fragment,{children:[(0,j.jsxs)(`div`,{className:`chapter-header`,children:[(0,j.jsx)(`span`,{className:`chapter-tag`,children:f.tag}),(0,j.jsx)(`h1`,{className:`chapter-title`,children:f.title})]}),(0,j.jsxs)(`div`,{className:`chapter-content`,children:[(0,j.jsx)(`div`,{dangerouslySetInnerHTML:{__html:f.content}}),(0,j.jsxs)(`div`,{className:`challenge-box`,children:[(0,j.jsxs)(`div`,{className:`challenge-title`,children:[(0,j.jsx)(Lt,{size:18,color:n[f.id]?`#10b981`:`#fbbf24`}),(0,j.jsxs)(`span`,{children:[`Challenge: `,f.challengeTitle]})]}),(0,j.jsx)(`div`,{dangerouslySetInnerHTML:{__html:f.challengeDescription}})]})]})]})]}),(0,j.jsxs)(`div`,{className:`editor-pane`,children:[(0,j.jsxs)(`div`,{className:`editor-toolbar`,children:[(0,j.jsxs)(`div`,{className:`file-name`,children:[(0,j.jsx)(It,{size:16}),` main.go`]}),(0,j.jsxs)(`button`,{className:`run-btn`,onClick:()=>{l(!0),s(`Executing via WebAssembly...
+}`,validate:e=>e.includes(`Len()`)&&e.includes(`Less(`)&&e.includes(`Swap(`)&&e.includes(`Push(`)&&e.includes(`Pop()`)?{success:!0,message:`✅ Success! Memorizing the heap.Interface boilerplate is an absolute must for Go interviews.`}:{success:!1,message:`❌ Challenge not solved. Ensure you implemented Len, Less, Swap, Push, and Pop.`}},{id:`ch9`,tag:`Chapter 9`,title:`Real World: The Semaphore Pattern`,content:`
+    <p>In large open-source projects like Kubernetes or Docker, you often need to process hundreds of tasks concurrently, but you can't just spawn 10,000 goroutines without blowing up memory or exhausting database connections.</p>
+    <p>The idiomatic Go solution isn't to use a heavy thread-pool library. Instead, we use a <strong>buffered channel as a Semaphore</strong>.</p>
+    <h3>The Semaphore</h3>
+    <p>By creating a buffered channel of size <code>N</code>, you can limit concurrency to exactly <code>N</code>. Before a goroutine starts work, it sends a token (usually an empty struct <code>struct{}{}</code>) into the channel. When it finishes, it receives a token out. If the channel is full, the next goroutine blocks until a token is released!</p>
+  `,challengeTitle:`Rate Limiting a Worker Pool`,challengeDescription:`
+    <p><strong>Task:</strong> The code below processes tasks concurrently, but it currently spawns a goroutine for every single task instantly, which would overwhelm a real server.</p>
+    <p>Refactor it to use a buffered channel <code>sem</code> of size 3. Ensure no more than 3 tasks run at the exact same time.</p>
+  `,initialCode:`package main
+
+import (
+	"fmt"
+	"sync"
+	"time"
+)
+
+func processTask(id int) {
+	fmt.Printf("Starting %d\\n", id)
+	time.Sleep(100 * time.Millisecond)
+}
+
+func main() {
+	var wg sync.WaitGroup
+	// TODO: Create a semaphore channel of size 3
+	
+	for i := 1; i <= 5; i++ {
+		wg.Add(1)
+		
+		go func(id int) {
+			defer wg.Done()
+			
+			// TODO: Acquire token here
+			
+			processTask(id)
+			
+			// TODO: Release token here
+		}(i)
+	}
+	wg.Wait()
+	fmt.Println("All done")
+}`,validate:e=>{let t=e.includes(`make(chan`)&&e.includes(`3)`),n=e.includes(`<-`);return t&&n?{success:!0,message:`✅ Success! You implemented a Semaphore.
+
+Using an empty struct channel (make(chan struct{}, 3)) is the standard way to rate-limit concurrency in Go without any external dependencies.`}:{success:!1,message:`❌ Challenge not solved.
+
+Hint: Create a buffered channel (e.g. sem := make(chan struct{}, 3)). Send into it before processTask, and receive from it after.`}}},{id:`ch10`,tag:`Chapter 10`,title:`Memory Leaks with Slices`,content:`
+    <p>We know slices are just pointers to an underlying array. But this leads to a dangerous edge case that is a favorite question in senior interviews.</p>
+    <p>If you read a massive 1GB file into memory as a byte slice, and then return just the first 10 bytes (<code>return data[:10]</code>), what happens to the 1GB of memory?</p>
+    <p><strong>It is never garbage collected!</strong> Because your tiny 10-byte slice still points to the exact same 1GB backing array, the GC cannot clean it up. The entire 1GB remains pinned in RAM.</p>
+  `,challengeTitle:`Defeating the Slice Leak`,challengeDescription:`
+    <p><strong>Task:</strong> The <code>GetHeader</code> function currently leaks memory by returning a sub-slice of a massive array. Refactor it to return a newly allocated slice containing a <em>copy</em> of the first 10 bytes.</p>
+  `,initialCode:`package main
+
+import "fmt"
+
+func GetHeader(massiveData []byte) []byte {
+	// BUG: This keeps massiveData pinned in memory forever!
+	return massiveData[:10]
+}
+
+func main() {
+	massive := make([]byte, 1000000)
+	for i := range massive {
+		massive[i] = 'A'
+	}
+	
+	header := GetHeader(massive)
+	fmt.Println(string(header))
+}`,validate:e=>{let t=e.includes(`copy(`),n=e.includes(`append([]byte{},`);return t||n?{success:!0,message:`✅ Success! By explicitly allocating a new slice and copying the data, the original massive array has no active pointers and can be safely garbage collected.`}:{success:!1,message:`❌ Challenge not solved.
+
+Hint: Create a new slice (e.g., using make) of length 10, and use the built-in copy() function to transfer the bytes.`}}}],Ht=o((e=>{var t=Symbol.for(`react.transitional.element`),n=Symbol.for(`react.fragment`);function r(e,n,r){var i=null;if(r!==void 0&&(i=``+r),n.key!==void 0&&(i=``+n.key),`key`in n)for(var a in r={},n)a!==`key`&&(r[a]=n[a]);else r=n;return n=r.ref,{$$typeof:t,type:e,key:i,ref:n===void 0?null:n,props:r}}e.Fragment=n,e.jsx=r,e.jsxs=r})),j=o(((e,t)=>{t.exports=Ht()}))();function Ut(){let{currentChapterId:e,codeSnippets:t,completedChapters:n,saveCodeSnippet:r,setChapter:i,markChapterCompleted:a}=wt(),[o,s]=(0,_.useState)(`Run the code to see output...`),[c,l]=(0,_.useState)(!1),[u,d]=(0,_.useState)(!1),f=Vt[Vt.findIndex(t=>t.id===e)]||Vt[0],p=t[f.id]===void 0?f.initialCode:t[f.id],m=Vt.length,h=Object.keys(n).filter(e=>n[e]).length,g=Math.round(h/m*100);return(0,_.useEffect)(()=>{s(`Run the code to see output...`)},[f.id]),(0,j.jsxs)(`div`,{className:`app-container`,children:[(0,j.jsxs)(`div`,{className:`sidebar`,children:[(0,j.jsx)(`div`,{className:`sidebar-icon `+(u?``:`active`),onClick:()=>d(!1),title:`Current Lesson`,children:(0,j.jsx)(Ft,{size:20})}),(0,j.jsx)(`div`,{className:`sidebar-icon `+(u?`active`:``),onClick:()=>d(!0),title:`Chapter List`,children:(0,j.jsx)(Rt,{size:20})}),(0,j.jsx)(`div`,{className:`sidebar-icon`,style:{marginTop:`auto`,marginBottom:`20px`},children:(0,j.jsx)(Bt,{size:20})})]}),(0,j.jsxs)(`div`,{className:`content-pane`,children:[(0,j.jsx)(`div`,{className:`progress-container`,children:(0,j.jsx)(`div`,{className:`progress-bar`,style:{width:g+`%`}})}),(0,j.jsxs)(`div`,{className:`progress-text`,children:[g,`% Completed`]}),u?(0,j.jsxs)(`div`,{className:`chapter-list-pane`,children:[(0,j.jsx)(`div`,{className:`chapter-header`,children:(0,j.jsx)(`h1`,{className:`chapter-title`,children:`Table of Contents`})}),(0,j.jsx)(`div`,{className:`chapter-list`,children:Vt.map(e=>(0,j.jsx)(`div`,{className:`chapter-list-item `+(e.id===f.id?`active`:``),onClick:()=>{i(e.id),d(!1)},children:(0,j.jsxs)(`div`,{style:{display:`flex`,justifyContent:`space-between`,alignItems:`center`},children:[(0,j.jsxs)(`div`,{children:[(0,j.jsx)(`div`,{className:`chapter-list-tag`,children:e.tag}),(0,j.jsx)(`div`,{className:`chapter-list-title`,children:e.title})]}),n[e.id]&&(0,j.jsx)(Lt,{size:20,color:`#10b981`})]})},e.id))})]}):(0,j.jsxs)(j.Fragment,{children:[(0,j.jsxs)(`div`,{className:`chapter-header`,children:[(0,j.jsx)(`span`,{className:`chapter-tag`,children:f.tag}),(0,j.jsx)(`h1`,{className:`chapter-title`,children:f.title})]}),(0,j.jsxs)(`div`,{className:`chapter-content`,children:[(0,j.jsx)(`div`,{dangerouslySetInnerHTML:{__html:f.content}}),(0,j.jsxs)(`div`,{className:`challenge-box`,children:[(0,j.jsxs)(`div`,{className:`challenge-title`,children:[(0,j.jsx)(Lt,{size:18,color:n[f.id]?`#10b981`:`#fbbf24`}),(0,j.jsxs)(`span`,{children:[`Challenge: `,f.challengeTitle]})]}),(0,j.jsx)(`div`,{dangerouslySetInnerHTML:{__html:f.challengeDescription}})]})]})]})]}),(0,j.jsxs)(`div`,{className:`editor-pane`,children:[(0,j.jsxs)(`div`,{className:`editor-toolbar`,children:[(0,j.jsxs)(`div`,{className:`file-name`,children:[(0,j.jsx)(It,{size:16}),` main.go`]}),(0,j.jsxs)(`button`,{className:`run-btn`,onClick:()=>{l(!0),s(`Executing via WebAssembly...
 
 `),setTimeout(()=>{let e=``;if(typeof window.runGoCode==`function`)try{e=window.runGoCode(p)}catch(t){e=`WASM Execution Error: `+t}else e=`WASM engine is still loading... please try again in a moment.`;let t=f.validate(p);t.success&&a(f.id),s(`[Terminal Output]
 `+e+`
