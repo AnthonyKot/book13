@@ -9,7 +9,7 @@ export const ch1: Chapter = {
   outcome: 'Choose a receiver deliberately and implement a value-style transformation without mutating the original value.',
   recognitionCue: 'When a method must work through an interface, ask whether callers hold a T or a *T; method-call convenience does not change either method set.',
   prediction: {
-    prompt: 'The direct call works because user is addressable. Which statement fails when GetName has a pointer receiver?',
+    prompt: 'GetName has a pointer receiver. The direct call compiles because user is addressable. Which line does the Go compiler reject?',
     code: `type Namer interface { GetName() string }
 
 func (u *User) GetName() string { return u.Name }
@@ -21,13 +21,13 @@ var b Namer = &user`,
     options: [
       {
         id: 'all-work',
-        label: 'All three uses work',
-        explanation: 'The compiler may take an address for a direct call on an addressable value, but it does not add pointer-receiver methods to User’s method set.',
+        label: 'All three lines compile',
+        explanation: 'The compiler takes an address for a direct call on an addressable value, but it does not add pointer-receiver methods to User’s method set. The browser interpreter used in these labs is more lenient here; the Go compiler is not.',
       },
       {
         id: 'value-interface-fails',
         label: 'Assigning user to a fails',
-        explanation: 'Correct. *User has GetName, but User does not. The direct call hides that distinction by automatically taking user’s address.',
+        explanation: 'Correct. *User has GetName, but User does not, so go build reports “User does not implement Namer (method GetName has pointer receiver)”. The direct call hides that distinction by automatically taking user’s address.',
       },
       {
         id: 'pointer-interface-fails',
@@ -39,7 +39,8 @@ var b Namer = &user`,
   },
   lesson: `
     <p>Go lets an addressable value call a pointer-receiver method: <code>user.GetName()</code> can be shorthand for <code>(&amp;user).GetName()</code>. Interfaces use method sets instead. A method declared on <code>User</code> belongs to both <code>User</code> and <code>*User</code>; one declared on <code>*User</code> belongs only to <code>*User</code>.</p>
-    <p>Choose a pointer receiver when the method must mutate the receiver, the value must not be copied, or the type’s other methods already use pointers. A small, immutable value can sensibly use value receivers. Do not decide from “getter” alone: copy safety, identity, consistency, and interface use all matter.</p>
+    <p>Choose a pointer receiver when the method must mutate the receiver, the value must not be copied (it holds a <code>sync.Mutex</code>, for example), or the type’s other methods already use pointers. A small, immutable value can sensibly use value receivers. Do not decide from “getter” alone: copy safety, identity, consistency, and interface use all matter. A value receiver is a copy of the whole struct on every call, which is cheap for a few fields and a cost worth measuring for large ones.</p>
+    <p>One caveat about this page: the in-browser evaluator is an interpreter and accepts <code>var a Namer = user</code> even with a pointer receiver. The Go compiler rejects it. When a lab’s point is what compiles, trust <code>go build</code>.</p>
     <pre><code>type Namer interface { GetName() string }
 
 func (u User) GetName() string { return u.Name }
@@ -91,9 +92,9 @@ func main() {
 }()`,
   testNames: ['original unchanged', 'returned transformation', 'pointer call'],
   hints: [
-    'The current pointer receiver aliases the caller’s User. A value receiver starts as a copy instead.',
-    'Declare the method with <code>(u User)</code>, assign the new name to that local receiver, and return it.',
-    'The completed method can be three lines: <code>func (u User) WithName(name string) User</code>, then <code>u.Name = name</code>, then <code>return u</code>.',
+    'Look at the receiver. <code>(u *User)</code> makes <code>u</code> alias the caller’s User, so <code>u.Name = name</code> writes through to the original.',
+    'A value receiver <code>(u User)</code> receives a copy. Writes to that copy are invisible to the caller, and the method belongs to the method sets of both User and *User, so the pointer test still compiles.',
+    'Change only the receiver, keep the assignment, and return the receiver itself instead of dereferencing a pointer.',
   ],
   debrief: {
     title: 'The shift: a receiver is not an object reference',
