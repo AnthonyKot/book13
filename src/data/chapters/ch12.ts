@@ -47,6 +47,7 @@ var reader UserReader = MemoryStore{}`,
 	UserName(id int) (string, error)
 }</code></pre>
     <p>The database package can keep returning a concrete type. The service owns the small interface, and a test can supply a local fake with the same method. Avoid defining speculative producer-side interfaces solely “for mocking”; concrete dependencies are simpler when no substitution is needed.</p>
+    <p>Two details of the method-set rule matter in practice. A method with a pointer receiver belongs to <code>*T</code>, not <code>T</code>, so a fake written with pointer receivers must be passed as a pointer. And when you want the compiler to state that a type still satisfies an interface, write the assertion instead of a declaration: <code>var _ UserStore = RealDB{}</code> costs nothing at runtime and fails the build the moment the method set drifts.</p>
   `,
   challenge: {
     title: 'Move the boundary to the service',
@@ -136,16 +137,16 @@ var goShiftInterfaceTestsRan = func() bool {
 	if greeting, err := realService.Greeting(1); greeting == "Hello, Real Alice" && err == nil {
 		println("__GO_SHIFT_TEST__\tPASS\treal implementation\tThe same narrow boundary still accepts the production dependency.")
 	} else {
-		println("__GO_SHIFT_TEST__\tFAIL\treal implementation\tThe refactor should preserve RealDB behavior.")
+		println("__GO_SHIFT_TEST__\tFAIL\treal implementation\tGreeting on the production RealDB must still return Hello, Real Alice for ID 1: do not special-case the store type inside the service.")
 	}
 return true
 }()`,
   contractFailureMessage: 'The test substitute cannot enter the service yet. Change both the UserService field and NewUserService parameter from RealDB to the consumer-owned UserStore interface.',
   testNames: ['consumer substitute', 'forwards id', 'varying data', 'error path', 'real implementation'],
   hints: [
-    'Declare <code>type UserStore interface { UserName(id int) (string, error) }</code> next to the service that consumes it.',
-    'Change the <code>store</code> field from <code>RealDB</code> to <code>UserStore</code>. RealDB already satisfies that interface implicitly.',
-    'Change only the constructor parameter to <code>UserStore</code>. <code>Greeting</code> can keep calling <code>s.store.UserName(id)</code> exactly as before.',
+    'Find every place that names <code>RealDB</code> outside its own method: the struct field and the constructor parameter. Those two spots are the boundary; <code>Greeting</code> and <code>main</code> need no change.',
+    'Any type whose method set includes an interface’s methods satisfies it, with no declaration on the type. So the interface lives next to the consumer and lists only what the consumer calls—here, one method with <code>RealDB</code>’s exact <code>UserName</code> signature.',
+    'Declare a one-method interface at the marked comment, then make the field and the parameter that interface type. The body of <code>Greeting</code> stays as it is; <code>RealDB</code> is not touched.',
   ],
   debrief: {
     title: 'The shift: abstract at the point of need',
