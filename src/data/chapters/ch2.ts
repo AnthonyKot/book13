@@ -23,19 +23,20 @@ fmt.Println("after")`,
       {
         id: 'stops-program',
         label: 'It prints before, then terminates',
-        explanation: 'Correct. With no recovery in a deferred function on that goroutine, the panic reaches the top and terminates the program.',
+        explanation: 'Correct. With no recovery in a deferred function on that goroutine, the panic reaches the top of the stack: the program prints the panic message and a goroutine trace to stderr and exits with status 2. “user:” and “after” never print.',
       },
       {
         id: 'only-goroutine',
         label: 'Only that goroutine quietly exits',
-        explanation: 'An unrecovered panic does not quietly discard one goroutine; reaching the top of a goroutine terminates the program.',
+        explanation: 'An unrecovered panic does not quietly discard one goroutine; reaching the top of any goroutine, not only main, terminates the whole program.',
       },
     ],
     correctOptionId: 'stops-program',
   },
   lesson: `
     <p>Go functions commonly return a useful value followed by <code>error</code>. A nil error means the operation succeeded; a non-nil error lets the caller choose whether to return it, add context, retry, or present a fallback. The language does not force handling—you can discard a value—but the failure stays visible in the function’s contract.</p>
-    <p><code>panic</code> stops normal execution and unwinds the current goroutine, running deferred calls. If no deferred function on that same goroutine recovers it, the program terminates. That mechanism is useful for broken invariants and programmer faults, not an expected “user not found” result.</p>
+    <p><code>panic</code> stops normal execution and unwinds the current goroutine, running deferred calls. If no deferred function on that same goroutine recovers it, the program terminates with exit status 2, whichever goroutine panicked. That mechanism is useful for broken invariants and programmer faults, not an expected “user not found” result.</p>
+    <p>The caller in the starter tests the error before the value, which is the convention: when <code>err != nil</code>, treat the other results as unspecified unless the function documents otherwise. Sentinel errors such as <code>errUserNotFound</code> let callers compare with <code>errors.Is</code>, and wrapping with <code>fmt.Errorf("lookup %d: %w", id, err)</code> adds context without breaking that comparison.</p>
     <pre><code>user, err := GetUser(id)
 if err != nil {
 	return "Lookup failed: " + err.Error()
@@ -85,7 +86,7 @@ func main() {
 	if user == "" && err != nil && err.Error() == "user not found" {
 		println("__GO_SHIFT_TEST__\tPASS\tmissing user error\tThe expected failure is represented by the returned error.")
 	} else {
-		println("__GO_SHIFT_TEST__\tFAIL\tmissing user error\tReturn an empty name and the user-not-found error for an unknown ID.")
+		println("__GO_SHIFT_TEST__\tFAIL\tmissing user error\tFor ID 2, return the empty name together with the errUserNotFound sentinel (message “user not found”), not a nil error.")
 	}
 	zeroUser, zeroErr := GetUser(0)
 	largeUser, largeErr := GetUser(99)
@@ -97,14 +98,14 @@ func main() {
 	if userLabel(1) == "User: Alice" && userLabel(2) == "Lookup failed: user not found" {
 		println("__GO_SHIFT_TEST__\tPASS\tcaller handles error\tThe caller can choose a success or failure message explicitly.")
 	} else {
-		println("__GO_SHIFT_TEST__\tFAIL\tcaller handles error\tKeep both the success value and returned error usable by the caller.")
+		println("__GO_SHIFT_TEST__\tFAIL\tcaller handles error\tuserLabel must still print “User: Alice” for ID 1 and “Lookup failed: user not found” for ID 2; change GetUser, not userLabel.")
 	}
 }()`,
   testNames: ['successful lookup', 'missing user error', 'all unknown IDs', 'caller handles error'],
   hints: [
-    'The function signature already returns <code>(string, error)</code>. A nil error promises success, even when the useful value is empty.',
-    'The missing branch should return the zero value for the name together with a non-nil error: <code>return "", ...</code>.',
-    'Use the existing sentinel value: <code>return "", errUserNotFound</code>. Leave <code>userLabel</code> to decide how the error is presented.',
+    'Look at the branch for <code>id != 1</code>. It returns a nil error, and the caller reads nil as “the lookup succeeded and the name is empty”.',
+    'The rule: a nil error promises success. An expected failure must come back as a non-nil error next to the zero value of the result, so the caller can branch on it.',
+    'The package already declares a sentinel error that nothing uses yet. Return it from the missing branch alongside the empty name, and leave <code>userLabel</code> unchanged: it already knows what to do with a non-nil error.',
   ],
   debrief: {
     title: 'The shift: expected failure stays in the contract',
