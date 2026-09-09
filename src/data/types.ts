@@ -1,4 +1,4 @@
-export type ModuleId = 'think' | 'solve' | 'ship';
+export type ModuleId = 'think' | 'solve' | 'ship' | 'serve';
 
 export interface CourseModule {
   id: ModuleId;
@@ -78,5 +78,10 @@ export const courseModules: CourseModule[] = [
     id: 'ship',
     title: 'Ship in Go',
     description: 'Give concurrent work a lifetime, protect scarce resources, and draw narrow dependency boundaries.',
+  },
+  {
+    id: 'serve',
+    title: 'Serve in Go',
+    description: 'Write the code around a service — the query layer, contracts and handlers — without inheriting an ORM’s or router’s silent defaults. These labs run on small stubs of the real APIs and say so.',
   },
 ];

@@ -225,7 +225,7 @@ function App() {
       <header className="site-header">
         <a className="brand" href="./" aria-label="The Go Shift home">
           <span className="brand-mark" aria-hidden="true">G<span>↗</span></span>
-          <span><strong>The Go Shift</strong><small>12 labs for experienced developers</small></span>
+          <span><strong>The Go Shift</strong><small>{chapters.length} labs for experienced developers</small></span>
         </a>
         <div className="header-progress" aria-label={`${completedCount} of ${chapters.length} labs passed`}>
           <span>{completedCount}/{chapters.length} labs</span>

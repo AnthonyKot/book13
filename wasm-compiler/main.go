@@ -9,13 +9,15 @@ import (
 
 	"github.com/traefik/yaegi/interp"
 	"github.com/traefik/yaegi/stdlib"
+
+	"wasm-compiler/shims"
 )
 
 const testMarker = "__GO_SHIFT_TEST__\t"
 
 type testResult struct {
 	Name    string `json:"name"`
-	Passed bool   `json:"passed"`
+	Passed  bool   `json:"passed"`
 	Message string `json:"message"`
 }
 
@@ -54,7 +56,7 @@ func collectOutput(raw string) (string, []testResult) {
 		}
 		tests = append(tests, testResult{
 			Name:    parts[1],
-			Passed: parts[0] == "PASS",
+			Passed:  parts[0] == "PASS",
 			Message: message,
 		})
 	}
@@ -72,6 +74,7 @@ func runGoCode(_ js.Value, args []js.Value) any {
 	var output bytes.Buffer
 	runner := interp.New(interp.Options{Stdout: &output, Stderr: &output})
 	runner.Use(stdlib.Symbols)
+	runner.Use(shims.Symbols) // stub packages under real import paths (gorm.io/gorm, gorm.io/driver/sqlite)
 
 	if _, err := runner.Eval(code); err != nil {
 		return encodeResult(runResult{

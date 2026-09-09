@@ -1,6 +1,6 @@
 # The Go Shift
 
-Twelve small, executable labs for experienced developers learning to make decisions in Go.
+Thirteen small, executable labs for experienced developers learning to make decisions in Go.
 
 The course is arranged around mental-model changes rather than language syntax:
 
