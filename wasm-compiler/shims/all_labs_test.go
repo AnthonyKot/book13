@@ -76,3 +76,41 @@ func TestAllLabStarters(t *testing.T) {
 		})
 	}
 }
+
+// Every lab with a reference solution in testdata/solutions/<id>.go must pass all of its hidden
+// tests with that solution. Labs without one are reported, not failed, so the gap stays visible.
+func TestAllLabSolutions(t *testing.T) {
+	files, _ := filepath.Glob("../../src/data/chapters/ch*.ts")
+	missing := []string{}
+	for _, f := range files {
+		id := strings.TrimSuffix(filepath.Base(f), ".ts")
+		sol, err := os.ReadFile(filepath.Join("testdata", "solutions", id+".go"))
+		if err != nil {
+			missing = append(missing, id)
+			continue
+		}
+		raw, _ := os.ReadFile(f)
+		src := string(raw)
+		t.Run(id, func(t *testing.T) {
+			tests := labField(t, src, "hiddenTestCode")
+			var out bytes.Buffer
+			i := interp.New(interp.Options{Stdout: &out, Stderr: &out})
+			i.Use(stdlib.Symbols)
+			i.Use(Symbols)
+			if _, err := i.Eval(string(sol)); err != nil {
+				t.Fatalf("solution does not compile: %v", err)
+			}
+			if _, err := i.Eval(tests); err != nil {
+				t.Fatalf("hidden tests raised on the solution: %v\n%s", err, out.String())
+			}
+			pass, fail := strings.Count(out.String(), "__GO_SHIFT_TEST__\tPASS\t"), strings.Count(out.String(), "__GO_SHIFT_TEST__\tFAIL\t")
+			if fail > 0 || pass == 0 {
+				t.Fatalf("solution: %d pass, %d fail\n%s", pass, fail, out.String())
+			}
+			t.Logf("solution passes all %d tests", pass)
+		})
+	}
+	if len(missing) > 0 {
+		t.Logf("labs without a reference solution: %s", strings.Join(missing, ", "))
+	}
+}
