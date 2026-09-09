@@ -1,0 +1,7 @@
+# ch4 — Slices: Views, Not Containers
+
+**Verified.** Reference solution (`wasm-compiler/shims/testdata/solutions/ch4.go`, `return append(labels, label)`) passes all 4 hidden tests in yaegi (`TestAllLabSolutions/ch4`) and under gc 1.22 (`go vet` + `go run`: `[read ship]`). Starter still fails all four. Prediction run with `go run` and in yaegi: both print `[1 9] [7 9 8]`, and `view` starts at len 1 / cap 2 as the prompt now states. Starter is not solvable by deleting a line (dropping the `_ = append` line still returns the input).
+
+**Changed.** Prediction prompt no longer announces which append fits; it gives the fact needed to work it out (a slice literal's capacity equals its length). Correct-option explanation spells out the two steps. Lesson: “If capacity is sufficient, it can reuse the backing array” → “it reuses the backing array” (the spec guarantees reuse; “can” hedged), and the paragraph now says the caller's variable is unchanged unless assigned the result and that the compiler rejects a bare `append` statement as “value … is not used” (checked with `go build`). Three FAIL messages now say what to do (e.g. “Even when storage is reused, the caller needs the returned length.” → “…the caller only sees it through the slice append returned. Return that slice, not the input.”). Hints rewritten to escalate; hint 3 previously quoted the fix (“Return the expression directly: `return append(labels, label)`”).
+
+**Unsettled.** Nothing. Transfer question (a remove-and-replace helper should return `[]T`) is answerable from the lesson.
