@@ -22,8 +22,17 @@ func labField(t *testing.T, src, field string) string {
 	var b strings.Builder
 	for i < len(src) {
 		c := src[i]
-		if c == '\\' && i+1 < len(src) { // TS escape: \` → ` and \\ → \
-			b.WriteByte(src[i+1])
+		if c == '\\' && i+1 < len(src) { // JS template-literal escapes
+			switch src[i+1] {
+			case 'n':
+				b.WriteByte('\n')
+			case 't':
+				b.WriteByte('\t')
+			case 'r':
+				b.WriteByte('\r')
+			default:
+				b.WriteByte(src[i+1]) // \` \\ \$ and any other escaped char
+			}
 			i += 2
 			continue
 		}
