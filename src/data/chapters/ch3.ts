@@ -9,7 +9,7 @@ export const ch3: Chapter = {
   outcome: 'Make a result-producing goroutine stop when either its value is delivered or its caller abandons the work.',
   recognitionCue: 'At every go statement, ask who waits for it, who can cancel it, and how every blocking send or receive can end.',
   prediction: {
-    prompt: 'The caller takes the timeout branch before work sends its result. What happens when the worker reaches the unbuffered send?',
+    prompt: 'This runs inside a request handler on a long-lived server. The handler takes the timeout branch before the worker sends its result. What happens when the worker reaches the unbuffered send?',
     code: `results := make(chan string)
 go func() {
 	time.Sleep(100 * time.Millisecond)
@@ -102,16 +102,17 @@ func main() {
 	go func() {
 		finished <- deliver(ctx, make(chan string), "orphaned")
 	}()
+	time.Sleep(5 * time.Millisecond) // let the sender park on a channel nobody reads
 	stop()
 	select {
 	case delivered := <-finished:
 		if !delivered {
 			println("__GO_SHIFT_TEST__\tPASS\tcancel while blocked\tCancellation released a sender that had no receiver.")
 		} else {
-			println("__GO_SHIFT_TEST__\tFAIL\tcancel while blocked\tAn abandoned value was reported as delivered.")
+			println("__GO_SHIFT_TEST__\tFAIL\tcancel while blocked\tReturned true although nothing received the value; return true only from the send case.")
 		}
-	case <-time.After(25 * time.Millisecond):
-		println("__GO_SHIFT_TEST__\tFAIL\tcancel while blocked\tThe sender remained blocked after its context was canceled.")
+	case <-time.After(250 * time.Millisecond):
+		println("__GO_SHIFT_TEST__\tFAIL\tcancel while blocked\tThe sender stayed blocked after its context was canceled. A check before the send is not enough: receive from ctx.Done() in the same select as the send.")
 	}
 
 	unbuffered := make(chan string)
@@ -120,7 +121,7 @@ func main() {
 		time.Sleep(2 * time.Millisecond)
 		received <- <-unbuffered
 	}()
-	waitCtx, stopWaiting := context.WithTimeout(context.Background(), 25*time.Millisecond)
+	waitCtx, stopWaiting := context.WithTimeout(context.Background(), 250*time.Millisecond)
 	defer stopWaiting()
 	if delivered := deliver(waitCtx, unbuffered, "handoff"); delivered && <-received == "handoff" {
 		println("__GO_SHIFT_TEST__\tPASS\twaits for receiver\tWaited for a later receiver instead of dropping the value.")
@@ -130,9 +131,9 @@ func main() {
 }()`,
   testNames: ['already canceled', 'delivers value', 'cancel while blocked', 'waits for receiver'],
   hints: [
-    'A plain <code>out &lt;- value</code> has only one way forward. Replace it with a <code>select</code> so two events can release the function.',
-    'Use one case for <code>out &lt;- value</code> and another for receiving from <code>ctx.Done()</code>. Do not add a <code>default</code> case.',
-    'Return <code>true</code> from the send case and <code>false</code> from the cancellation case.',
+    'Look at the <code>default</code> case. It runs whenever no receiver is ready <em>at this instant</em>—which, for an unbuffered channel, is nearly always the instant of the call—so the function reports failure before anyone has had a chance to receive.',
+    'A <code>select</code> with no <code>default</code> blocks until one of its cases can proceed. Cancellation is a receive on <code>ctx.Done()</code>, and it belongs in the same <code>select</code> as the send: a check before the send cannot release a sender that is already parked.',
+    'Two cases and no <code>default</code>: the send case returns <code>true</code>, the <code>ctx.Done()</code> case returns <code>false</code>. Nothing else is needed.',
   ],
   debrief: {
     title: 'The shift: concurrency creates ownership',
