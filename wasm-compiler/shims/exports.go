@@ -7,6 +7,7 @@ import (
 
 	"github.com/traefik/yaegi/interp"
 
+	"wasm-compiler/shims/gin"
 	"wasm-compiler/shims/gorm"
 	"wasm-compiler/shims/sqlite"
 )
@@ -23,5 +24,16 @@ var Symbols = interp.Exports{
 	},
 	"gorm.io/driver/sqlite/sqlite": {
 		"Open": reflect.ValueOf(sqlite.Open),
+	},
+	"github.com/gin-gonic/gin/gin": {
+		"Context":        reflect.ValueOf((*gin.Context)(nil)),
+		"Engine":         reflect.ValueOf((*gin.Engine)(nil)),
+		"H":              reflect.ValueOf((*gin.H)(nil)),
+		"HandlerFunc":    reflect.ValueOf((*gin.HandlerFunc)(nil)),
+		"Param":          reflect.ValueOf((*gin.Param)(nil)),
+		"Params":         reflect.ValueOf((*gin.Params)(nil)),
+		"ResponseWriter": reflect.ValueOf((*gin.ResponseWriter)(nil)),
+		"New":            reflect.ValueOf(gin.New),
+		"Default":        reflect.ValueOf(gin.Default),
 	},
 }
