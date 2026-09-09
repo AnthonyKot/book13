@@ -23,7 +23,7 @@ use(header)`,
       {
         id: 'none-yet',
         label: 'None of that backing array yet',
-        explanation: 'Correct. While header remains reachable, its backing array remains reachable too. The storage can be collected after no slice refers to it.',
+        explanation: 'Correct. While header remains reachable, its backing array remains reachable too: with a 10 MB array, runtime.MemStats shows the full 10 MB still on the heap after a GC while the ten-byte view lives, and 0 MB once the view is dropped. The storage can be collected only after no slice refers to it.',
       },
       {
         id: 'all-immediately',
@@ -35,7 +35,8 @@ use(header)`,
   },
   lesson: `
     <p>Reslicing creates another view; it does not copy elements. Returning <code>data[:10]</code> can therefore keep a large backing array reachable even though the caller needs only ten bytes. This is retained backing storage, not permanent leakage: the array becomes collectible when the last referring slice is no longer reachable.</p>
-    <p>A full slice expression such as <code>data[:10:10]</code> limits future append capacity but still points to the same array. To cross an ownership or lifetime boundary, allocate separate storage and copy the useful bytes.</p>
+    <p>A full slice expression such as <code>data[:10:10]</code> limits future append capacity but still points to the same array. To cross an ownership or lifetime boundary, allocate separate storage and copy the useful bytes. <code>copy</code> transfers <code>min(len(dst), len(src))</code> elements and never allocates, so the destination’s length decides how much is kept.</p>
+    <p>Since Go 1.20, <code>bytes.Clone(data[:n])</code> does the same in one call for byte slices, and since Go 1.21 <code>slices.Clone</code> does it for any slice type. Both are <code>append</code> underneath, so the copy’s capacity may round up to an allocation size class (16 for a ten-byte clone). The browser evaluator in these labs runs <code>bytes.Clone</code> but not the generic <code>slices.Clone</code>.</p>
     <pre><code>prefix := make([]byte, n)
 copy(prefix, data[:n])
 return prefix</code></pre>
@@ -80,7 +81,7 @@ func main() {
 	if equalBytes(header, "abcdefghij") {
 		println("__GO_SHIFT_TEST__\tPASS\tfirst ten bytes\tReturned exactly the useful ten-byte prefix.")
 	} else {
-		println("__GO_SHIFT_TEST__\tFAIL\tfirst ten bytes\tReturn the first ten bytes in their original order.")
+		println("__GO_SHIFT_TEST__\tFAIL\tfirst ten bytes\tFor a 16-byte input the result must be exactly the first ten bytes, in order: check the length of the storage you allocate and that copy fills all of it.")
 	}
 
 	source[0] = 'Z'
@@ -95,7 +96,7 @@ func main() {
 	if source[1] == 'b' {
 		println("__GO_SHIFT_TEST__\tPASS\tresult independence\tChanging the returned header does not mutate the source.")
 	} else {
-		println("__GO_SHIFT_TEST__\tFAIL\tresult independence\tThe source and returned header must use independent backing storage.")
+		println("__GO_SHIFT_TEST__\tFAIL\tresult independence\tWriting header[1] changed source[1], so both still share one array. Return storage you allocated, not a reslice of the input.")
 	}
 
 	shortSource := []byte("go")
@@ -113,9 +114,9 @@ func main() {
 }()`,
   testNames: ['first ten bytes', 'source independence', 'result independence', 'short input'],
   hints: [
-    'Limiting capacity with <code>data[:limit:limit]</code> changes append behavior, but it does not stop the result from referring to the original array.',
-    'Allocate a destination with the exact useful length: <code>header := make([]byte, limit)</code>.',
-    'Use <code>copy(header, data[:limit])</code>, then return <code>header</code>. The existing limit calculation already handles short and nil input.',
+    'Look at the return statement. <code>data[:limit]</code> is a view: a new length over the same array, so every byte of data stays reachable and every write to it shows through. Limiting capacity with <code>data[:limit:limit]</code> does not change that.',
+    'The rule: a reslice never gets storage of its own. Independence needs a second allocation and an element-by-element copy; the built-in <code>copy</code> does the transfer and takes care of the shorter side.',
+    'Allocate a byte slice whose length is the limit the starter already computes, copy the prefix into it, and return that slice. The short and nil cases need no extra code once the length comes from limit.',
   ],
   debrief: {
     title: 'The shift: a view carries a lifetime',
