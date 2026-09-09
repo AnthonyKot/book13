@@ -12,6 +12,11 @@ Every lab asks for a prediction before code runs, compiles the learner's program
 checks behavior with hidden cases, explains individual failures, and closes with a transfer question.
 Passing tests is recorded separately from opening a lesson or revealing hints.
 
+Every lab has a stable link: `https://anthonykot.github.io/book13/#lab-4` opens Lab 4 directly, the
+"Copy link" control in the lab header copies it, and the curriculum entries are ordinary links. The
+lab's mental model and recognition cue appear only after the reader commits a prediction, so the
+prediction is made before the answer is on screen.
+
 ## Local development
 
 ```bash

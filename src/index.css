@@ -63,7 +63,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px 
 .chapter-kicker span:last-child { color: #7c8583; }
 h1, h2, h3, p { margin-top: 0; }
 .lesson-pane h1 { max-width: 600px; margin: 12px 0 16px; font-size: clamp(32px, 3.1vw, 48px); line-height: 1.04; letter-spacing: -.045em; }
-.mental-model { margin-bottom: 30px; padding-left: 16px; border-left: 3px solid var(--amber); color: var(--ink-soft); font-size: 16px; line-height: 1.55; }
+.mental-model { margin: 16px 0 0; padding-left: 16px; border-left: 3px solid var(--amber); color: var(--ink-soft); font-size: 16px; line-height: 1.55; }
 .mental-model span { display: block; margin-bottom: 4px; color: #9a6e10; font: 700 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
 .orientation { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; margin: 0 0 38px; overflow: hidden; border: 1px solid var(--paper-line); border-radius: 10px; background: var(--paper-line); }
 .orientation > div { display: flex; align-items: flex-start; gap: 11px; padding: 17px; background: var(--paper-strong); }
@@ -162,12 +162,12 @@ code { font-family: var(--mono); }
 .module-group > p { margin-bottom: 13px; color: var(--night-muted); font-size: 12px; line-height: 1.45; }
 .module-group ol { list-style: none; margin: 0; padding: 0; }
 .module-group li { margin-bottom: 6px; }
-.module-group button { width: 100%; display: flex; align-items: flex-start; gap: 12px; padding: 11px; border: 1px solid transparent; border-radius: 8px; text-align: left; color: var(--night-text); background: transparent; }
-.module-group button:hover, .module-group button.current { border-color: #345055; background: #192629; }
-.module-group button > span:first-child { display: grid; place-items: center; flex: 0 0 auto; width: 25px; height: 25px; border-radius: 50%; color: #74d4dc; background: #213438; font: 700 11px var(--mono); }
-.module-group button strong, .module-group button small { display: block; }
-.module-group button strong { font-size: 13px; }
-.module-group button small { margin-top: 3px; color: var(--night-muted); font-size: 11px; line-height: 1.35; }
+.module-group a { width: 100%; display: flex; align-items: flex-start; gap: 12px; padding: 11px; border: 1px solid transparent; border-radius: 8px; text-align: left; color: var(--night-text); background: transparent; }
+.module-group a:hover, .module-group a.current { border-color: #345055; background: #192629; }
+.module-group a > span:first-child { display: grid; place-items: center; flex: 0 0 auto; width: 25px; height: 25px; border-radius: 50%; color: #74d4dc; background: #213438; font: 700 11px var(--mono); }
+.module-group a strong, .module-group a small { display: block; }
+.module-group a strong { font-size: 13px; }
+.module-group a small { margin-top: 3px; color: var(--night-muted); font-size: 11px; line-height: 1.35; }
 
 @media (max-width: 900px) {
   .app-shell { height: 100dvh; grid-template-rows: 58px 45px 1fr; }
@@ -207,3 +207,8 @@ code { font-family: var(--mono); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
+
+.orientation.single { grid-template-columns: 1fr; }
+.copy-link { margin-left: 10px; padding: 2px 8px; border: 1px solid var(--paper-line); border-radius: 999px; background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; }
+.copy-link:hover { color: var(--cyan-dark); border-color: var(--cyan-dark); }
+.curriculum-drawer li a { text-decoration: none; color: inherit; }

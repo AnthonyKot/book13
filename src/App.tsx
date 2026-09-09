@@ -10,6 +10,7 @@ import {
   Code2,
   FlaskConical,
   Lightbulb,
+  Link2,
   List,
   LoaderCircle,
   Menu,
@@ -23,6 +24,15 @@ import { courseModules, type RuntimeResult } from './data/types';
 import { useCourseStore } from './store';
 
 type MobileTab = 'learn' | 'code' | 'result';
+
+// Stable, shareable lab URLs: #lab-4 → the chapter whose order is 4. Lab numbers are the public
+// identity; chapter ids stay internal (they key saved progress).
+const labHash = (order: number) => `#lab-${order}`;
+const chapterIdFromHash = (hash: string): string | null => {
+  const match = /^#lab-(\d+)$/.exec(hash);
+  if (!match) return null;
+  return chapters.find((item) => item.order === Number(match[1]))?.id ?? null;
+};
 type RuntimeState = 'loading' | 'ready' | 'error';
 
 function App() {
@@ -48,6 +58,7 @@ function App() {
   const [runtimeState, setRuntimeState] = useState<RuntimeState>('loading');
   const [curriculumOpen, setCurriculumOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab>('learn');
+  const [linkCopied, setLinkCopied] = useState(false);
   const workerRef = useRef<Worker | null>(null);
   const timeoutRef = useRef<number | null>(null);
   const pendingChapterRef = useRef<string | null>(null);
@@ -127,9 +138,25 @@ function App() {
   }, [startWorker]);
 
   useEffect(() => {
+    const fromHash = chapterIdFromHash(window.location.hash);
+    if (fromHash) setChapter(fromHash);
+    const onHashChange = () => {
+      const id = chapterIdFromHash(window.location.hash);
+      if (id) setChapter(id);
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, [setChapter]);
+
+  useEffect(() => {
     setResult(null);
     setMobileTab('learn');
-  }, [chapter.id]);
+    setLinkCopied(false);
+    if (window.location.hash !== labHash(chapter.order)) {
+      window.history.replaceState(null, '', labHash(chapter.order));
+    }
+    document.title = `Lab ${chapter.order}: ${chapter.title} — The Go Shift`;
+  }, [chapter.id, chapter.order, chapter.title]);
 
   useEffect(() => {
     if (!curriculumOpen) return;
@@ -170,6 +197,17 @@ function App() {
   const goToChapter = (id: string) => {
     setChapter(id);
     setCurriculumOpen(false);
+  };
+
+  const labUrl = `${window.location.origin}${window.location.pathname}${labHash(chapter.order)}`;
+  const copyLabLink = async () => {
+    try {
+      await navigator.clipboard.writeText(labUrl);
+      setLinkCopied(true);
+      window.setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      window.prompt('Copy this lab link', labUrl);
+    }
   };
 
   const openCurriculum = () => {
@@ -219,20 +257,26 @@ function App() {
           <div className="lesson-inner">
             <div className="chapter-kicker">
               <span>{courseModules.find((item) => item.id === chapter.module)?.title}</span>
-              <span>Lab {chapter.order} of {chapters.length}</span>
+              <span>
+                Lab {chapter.order} of {chapters.length}
+                <button className="copy-link" type="button" onClick={copyLabLink} title={labUrl} aria-label="Copy link to this lab">
+                  <Link2 size={13} /> {linkCopied ? 'Link copied' : 'Copy link'}
+                </button>
+              </span>
             </div>
             <h1>{chapter.title}</h1>
-            <p className="mental-model"><span>The old instinct</span>{chapter.mentalModel}</p>
 
-            <section className="orientation" aria-labelledby="outcome-heading">
+            <section className={`orientation ${predictionChecked ? '' : 'single'}`} aria-labelledby="outcome-heading">
               <div>
                 <FlaskConical size={18} aria-hidden="true" />
                 <p><strong id="outcome-heading">By the end</strong>{chapter.outcome}</p>
               </div>
-              <div>
-                <Lightbulb size={18} aria-hidden="true" />
-                <p><strong>Recognition cue</strong>{chapter.recognitionCue}</p>
-              </div>
+              {predictionChecked ? (
+                <div>
+                  <Lightbulb size={18} aria-hidden="true" />
+                  <p><strong>Recognition cue</strong>{chapter.recognitionCue}</p>
+                </div>
+              ) : null}
             </section>
 
             <section className="prediction-card" aria-labelledby="prediction-heading">
@@ -264,6 +308,7 @@ function App() {
                   <p><strong>{predictionCorrect ? 'That is the shift.' : 'Useful miss.'}</strong>{selectedOption?.explanation}</p>
                 </div>
               )}
+              {predictionChecked ? <p className="mental-model"><span>The shift</span>{chapter.mentalModel}</p> : null}
             </section>
 
             <section className="prose-section" aria-labelledby="rule-heading">
@@ -410,10 +455,10 @@ function App() {
                   <ol>
                     {moduleChapters.map((item) => (
                       <li key={item.id}>
-                        <button type="button" className={item.id === chapter.id ? 'current' : ''} onClick={() => goToChapter(item.id)}>
+                        <a href={labHash(item.order)} className={item.id === chapter.id ? 'current' : ''} onClick={(event) => { event.preventDefault(); goToChapter(item.id); }}>
                           <span>{completions[item.id] ? <Check size={14} /> : item.order}</span>
-                          <span><strong>{item.title}</strong><small>{item.recognitionCue}</small></span>
-                        </button>
+                          <span><strong>{item.title}</strong><small>{item.outcome}</small></span>
+                        </a>
                       </li>
                     ))}
                   </ol>
