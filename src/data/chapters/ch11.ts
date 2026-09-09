@@ -44,6 +44,7 @@ fmt.Println(slowWork(ctx))`,
 defer cancel()
 return fetch(ctx)</code></pre>
     <p>Starting from <code>context.Background()</code> inside the service would sever upstream cancellation. A deadline is not a kill switch; it is a lifetime signal that the whole call chain must preserve.</p>
+    <p>The <code>cancel</code> function is not optional. Until it runs, the parent keeps a reference to the child and the child’s timer stays armed, so a fast call that skips <code>cancel</code> leaves both alive until the deadline fires. <code>go vet</code> catches the obvious forms—<code>ctx, _ := context.WithTimeout(...)</code> and a return path that misses <code>cancel</code>—but not a <code>cancel</code> that is assigned away and never called.</p>
   `,
   challenge: {
     title: 'Keep the caller in control',
@@ -133,9 +134,9 @@ func main() {
 }()`,
   testNames: ['fast result', 'parent cancellation', 'deadline signal', 'early cleanup'],
   hints: [
-    'Call <code>context.WithTimeout(parent, timeout)</code>. It returns both a derived context and a cancel function.',
-    'Place <code>defer cancel()</code> immediately after creating the derived context so fast and error returns both release its resources.',
-    'Call <code>fetch(ctx)</code> with the derived context, then return its result directly.',
+    'Two things in <code>safeFetch</code> decide every test: the first argument handed to <code>context.WithTimeout</code>, and what happens to the <code>cancel</code> it returns.',
+    'A derived context ends when its parent ends <em>or</em> its own deadline passes, whichever is first—but only if it was derived from that parent. And its <code>cancel</code> must run on every return path, or the child and its timer outlive the work.',
+    'Derive from <code>parent</code>, defer the cancel on the very next line, and hand the derived context—not <code>parent</code>—to <code>fetch</code>. Three lines, no branches.',
   ],
   debrief: {
     title: 'The shift: propagate lifetime, do not impose termination',
