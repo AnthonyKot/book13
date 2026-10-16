@@ -111,6 +111,8 @@ code { font-family: var(--mono); }
 .debrief-card { background: #173032; color: var(--night-text); }
 .debrief-card .step-label { color: #60ced8; }
 .debrief-card p { color: #bfd0d0; line-height: 1.62; }
+.debrief-card .secondary-button { color: var(--night-text); border-color: #4b6a6e; }
+.debrief-card .secondary-button:hover:not(:disabled) { background: #214346; }
 .transfer-question { margin: 20px 0; padding: 16px; border-left: 3px solid var(--cyan); background: #102426; }
 .transfer-question strong { color: #70d3dc; font: 700 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
 .transfer-question p { margin: 6px 0 0; color: var(--night-text); }
@@ -187,8 +189,9 @@ code { font-family: var(--mono); }
   .orientation { grid-template-columns: 1fr; }
   .mobile-code-cta, .mobile-debrief-cta { display: inline-flex; }
   .lab-toolbar .runtime-state { display: none; }
-  .lab-toolbar .quiet-button { width: 36px; padding: 0; font-size: 0; }
+  .lab-toolbar .quiet-button:not(.confirm-reset) { width: 36px; padding: 0; font-size: 0; }
   .lab-toolbar .quiet-button svg { width: 16px; }
+  .run-kbd { display: none; }
   .results-panel.mobile-expanded { grid-row: 2 / 4; }
   .editor-region.mobile-hidden { display: none; }
   .curriculum-drawer { padding: 22px 16px; }
@@ -196,7 +199,7 @@ code { font-family: var(--mono); }
 
 @media (max-width: 520px) {
   .chapter-kicker { display: block; }
-  .chapter-kicker span { display: block; margin-bottom: 4px; }
+  .chapter-kicker > span { display: block; margin-bottom: 4px; }
   .prediction-card, .challenge-card, .debrief-card { padding: 19px; margin-left: -4px; margin-right: -4px; }
   .section-row { align-items: flex-start; flex-direction: column; gap: 4px; }
   .lab-toolbar { padding: 0 8px; }
@@ -209,7 +212,20 @@ code { font-family: var(--mono); }
 }
 
 .orientation.single { grid-template-columns: 1fr; }
-.copy-link { margin-left: 10px; padding: 2px 8px; border: 1px solid var(--paper-line); border-radius: 999px; background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; }
+.kicker-nav { display: inline-flex; align-items: center; gap: 6px; }
+.kicker-step { width: 22px; height: 22px; padding: 0; border: 1px solid var(--paper-line); border-radius: 5px; background: var(--paper-strong); color: var(--ink-soft); display: inline-grid; place-items: center; }
+.kicker-step:hover { color: var(--cyan-dark); border-color: var(--cyan-dark); }
+.copy-link { margin-left: 4px; padding: 2px 8px; border: 1px solid var(--paper-line); border-radius: 999px; background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; }
 .copy-link:hover { color: var(--cyan-dark); border-color: var(--cyan-dark); }
+.prediction-card label.correct-choice { border-color: var(--green); background: var(--green-wash); color: #134e3a; font-weight: 600; }
+.prediction-card label.wrong-choice { border-color: var(--red); background: var(--red-wash); color: #7a312a; }
+.correct-followup { margin-top: 8px !important; padding-top: 8px; border-top: 1px solid rgba(139, 63, 55, 0.22); }
+.locked-lesson-gate { display: flex; align-items: flex-start; gap: 12px; margin-top: 28px; padding: 18px 20px; border: 1px dashed #b9b2a3; border-radius: 10px; background: rgba(255, 253, 247, 0.65); color: var(--ink-soft); font-size: 14px; line-height: 1.5; }
+.locked-lesson-gate svg { flex: 0 0 auto; margin-top: 2px; color: var(--cyan-dark); }
+.locked-lesson-gate p { margin: 0; }
+.locked-lesson-gate strong { color: var(--ink); }
+.quiet-button.confirm-reset { border-color: var(--amber); color: var(--amber); background: rgba(224, 161, 27, 0.12); font-size: 12px; }
+.run-kbd { margin-left: 2px; padding: 1px 5px; border-radius: 4px; background: rgba(5, 40, 44, 0.16); color: #05282c; font: 600 10px var(--mono); }
+.results-next-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--night-line); }
 .curriculum-drawer li a { text-decoration: none; color: inherit; }
 .lab-note { margin-top: 18px; padding: 12px 14px; border-radius: 8px; background: var(--paper-strong); border: 1px solid var(--paper-line); font-size: 13px; }

@@ -2,7 +2,7 @@ import type { Chapter } from '../types';
 
 export const ch5: Chapter = {
   id: 'ch5',
-  order: 6,
+  order: 8,
   module: 'solve',
   title: 'Maps: Presence Is Separate from Value',
   mentalModel: 'A map lookup does not tell you whether the key was present unless you ask it to.',

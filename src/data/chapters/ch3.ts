@@ -2,10 +2,10 @@ import type { Chapter } from '../types';
 
 export const ch3: Chapter = {
   id: 'ch3',
-  order: 10,
+  order: 13,
   module: 'ship',
   title: 'Every Goroutine Needs an Exit',
-  mentalModel: 'Once a caller returns, the runtime will clean up any goroutine it started.',
+  mentalModel: 'A goroutine lives until its function returns; returning from the caller does not collect a worker that is still parked on a channel send or receive.',
   outcome: 'Make a result-producing goroutine stop when either its value is delivered or its caller abandons the work.',
   recognitionCue: 'At every go statement, ask who waits for it, who can cancel it, and how every blocking send or receive can end.',
   prediction: {

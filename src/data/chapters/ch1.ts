@@ -40,16 +40,16 @@ var b Namer = &user`,
   lesson: `
     <p>Go lets an addressable value call a pointer-receiver method: <code>user.GetName()</code> can be shorthand for <code>(&amp;user).GetName()</code>. Interfaces use method sets instead. A method declared on <code>User</code> belongs to both <code>User</code> and <code>*User</code>; one declared on <code>*User</code> belongs only to <code>*User</code>.</p>
     <p>Choose a pointer receiver when the method must mutate the receiver, the value must not be copied (it holds a <code>sync.Mutex</code>, for example), or the type’s other methods already use pointers. A small, immutable value can sensibly use value receivers. Do not decide from “getter” alone: copy safety, identity, consistency, and interface use all matter. A value receiver is a copy of the whole struct on every call, which is cheap for a few fields and a cost worth measuring for large ones.</p>
-    <p>One caveat about this page: the in-browser evaluator is an interpreter and accepts <code>var a Namer = user</code> even with a pointer receiver. The Go compiler rejects it. When a lab’s point is what compiles, trust <code>go build</code>.</p>
     <pre><code>type Namer interface { GetName() string }
 
 func (u User) GetName() string { return u.Name }
 
 var _ Namer = User{}  // User and *User now satisfy Namer</code></pre>
+    <p class="lab-note"><strong>About this lab.</strong> The in-browser evaluator is an interpreter and accepts <code>var a Namer = user</code> even with a pointer receiver. The Go compiler rejects it, and calling a pointer-receiver method on a non-addressable value such as <code>User{Name: "Ada"}.WithName("Grace")</code> fails because there is no variable to take the address of.</p>
   `,
   challenge: {
     title: 'Make the transformation value-oriented',
-    description: 'WithName should return a renamed User while leaving the original unchanged. Change the receiver and return the modified copy. The tests exercise both User values and pointers to User without inspecting your source text.',
+    description: 'WithName should return a renamed User while leaving the original unchanged. Change the receiver and return the modified copy. The tests exercise addressable values, non-addressable value expressions, and pointers to User.',
   },
   starterCode: `package main
 
@@ -77,10 +77,11 @@ func main() {
 	} else {
 		println("__GO_SHIFT_TEST__\tFAIL\toriginal unchanged\tWithName mutated the original User. Work on a value receiver copy instead.")
 	}
-	if renamed.Name == "Grace" {
-		println("__GO_SHIFT_TEST__\tPASS\treturned transformation\tThe returned User contains the requested name.")
+	literal := User{Name: "Ada"}.WithName("Hopper")
+	if renamed.Name == "Grace" && literal.Name == "Hopper" {
+		println("__GO_SHIFT_TEST__\tPASS\treturned transformation\tThe returned User contains the requested name on both variable and value expressions.")
 	} else {
-		println("__GO_SHIFT_TEST__\tFAIL\treturned transformation\tModify the receiver copy and return it with the requested name.")
+		println("__GO_SHIFT_TEST__\tFAIL\treturned transformation\tModify the value receiver copy and return it with the requested name.")
 	}
 	pointer := &User{Name: "Lin"}
 	pointerResult := pointer.WithName("Rob")

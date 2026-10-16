@@ -2,7 +2,7 @@ import type { Chapter } from '../types';
 
 export const ch13: Chapter = {
   id: 'ch13',
-  order: 13,
+  order: 17,
   module: 'serve',
   title: 'Struct Conditions Drop Your Zero Values',
   mentalModel: 'A struct condition tells the ORM which fields are set, not which values you want. Zero values — false, 0, "" — count as unset and are silently dropped from the query.',

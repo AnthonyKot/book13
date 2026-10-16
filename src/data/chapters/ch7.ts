@@ -2,7 +2,7 @@ import type { Chapter } from '../types';
 
 export const ch7: Chapter = {
   id: 'ch7',
-  order: 7,
+  order: 9,
   module: 'solve',
   title: 'Nil-Safe Pointer Traversal',
   mentalModel: 'A loop guard must prove every pointer in the next dereference chain is safe, not merely the first one.',

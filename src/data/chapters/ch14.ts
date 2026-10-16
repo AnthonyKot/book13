@@ -2,7 +2,7 @@ import type { Chapter } from '../types';
 
 export const ch14: Chapter = {
   id: 'ch14',
-  order: 14,
+  order: 18,
   module: 'serve',
   title: 'Writing a Response Does Not Stop the Handler',
   mentalModel: 'A response is bytes written to a connection. Writing them neither returns from your function nor stops the middleware chain. Only return ends a handler, and only Abort ends the chain.',

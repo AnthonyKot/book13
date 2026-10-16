@@ -24,18 +24,18 @@ function loadChapter(fileName) {
 }
 
 const chapters = chapterFiles.map(loadChapter).filter(Boolean);
-if (chapters.length !== 12) errors.push(`expected 12 chapter definitions, found ${chapters.length}`);
+if (chapters.length !== 20) errors.push(`expected 20 chapter definitions, found ${chapters.length}`);
 
 const ids = new Set();
 const orders = new Set();
-const moduleCounts = { think: 0, solve: 0, ship: 0 };
+const moduleCounts = { think: 0, solve: 0, ship: 0, serve: 0 };
 
 for (const chapter of chapters) {
   const label = chapter.id || '(missing id)';
   if (!/^ch\d+$/.test(chapter.id)) errors.push(`${label}: invalid id`);
   if (ids.has(chapter.id)) errors.push(`${label}: duplicate id`);
   ids.add(chapter.id);
-  if (!Number.isInteger(chapter.order) || chapter.order < 1 || chapter.order > 12) errors.push(`${label}: order must be an integer from 1 to 12`);
+  if (!Number.isInteger(chapter.order) || chapter.order < 1 || chapter.order > 20) errors.push(`${label}: order must be an integer from 1 to 20`);
   if (orders.has(chapter.order)) errors.push(`${label}: duplicate order ${chapter.order}`);
   orders.add(chapter.order);
   if (!(chapter.module in moduleCounts)) errors.push(`${label}: unknown module ${chapter.module}`);
@@ -66,9 +66,9 @@ for (const chapter of chapters) {
   if (!chapter.debrief?.title || !chapter.debrief?.summary || !chapter.debrief?.transfer) errors.push(`${label}: debrief needs title, summary, and transfer question`);
 }
 
-const expectedOrders = Array.from({ length: 12 }, (_, index) => index + 1);
-if (expectedOrders.some((order) => !orders.has(order))) errors.push('chapter orders must cover every position from 1 through 12');
-if (moduleCounts.think !== 5 || moduleCounts.solve !== 3 || moduleCounts.ship !== 4) errors.push(`module counts should be think=5, solve=3, ship=4; got ${JSON.stringify(moduleCounts)}`);
+const expectedOrders = Array.from({ length: 20 }, (_, index) => index + 1);
+if (expectedOrders.some((order) => !orders.has(order))) errors.push('chapter orders must cover every position from 1 through 20');
+if (moduleCounts.think !== 7 || moduleCounts.solve !== 4 || moduleCounts.ship !== 5 || moduleCounts.serve !== 4) errors.push(`module counts should be think=7, solve=4, ship=5, serve=4; got ${JSON.stringify(moduleCounts)}`);
 
 if (errors.length) {
   console.error('Content validation failed:');
@@ -76,4 +76,4 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log(`Content validation passed: ${chapters.length} labs, orders 1–12, modules 5/3/4, complete learning contracts.`);
+console.log(`Content validation passed: ${chapters.length} labs, orders 1–20, modules 7/4/5/4, complete learning contracts.`);

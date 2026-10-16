@@ -2,7 +2,7 @@ import type { Chapter } from '../types';
 
 export const ch8: Chapter = {
   id: 'ch8',
-  order: 8,
+  order: 10,
   module: 'solve',
   title: 'The container/heap Contract',
   mentalModel: 'The public heap operation and your interface callback have different responsibilities.',

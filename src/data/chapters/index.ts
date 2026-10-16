@@ -13,6 +13,15 @@ import { ch12 } from './ch12';
 import { ch13 } from './ch13';
 import { ch14 } from './ch14';
 import { ch15 } from './ch15';
+import { ch16 } from './ch16';
+import { ch17 } from './ch17';
+import { ch18 } from './ch18';
+import { ch19 } from './ch19';
+import { ch20 } from './ch20';
 
-export const chapters = [ch1, ch2, ch4, ch10, ch6, ch5, ch7, ch8, ch11, ch3, ch9, ch12, ch13, ch14, ch15]
-  .sort((a, b) => a.order - b.order);
+export const chapters = [
+  ch1, ch2, ch4, ch10, ch6, ch16, ch17,
+  ch5, ch7, ch8, ch18,
+  ch11, ch3, ch9, ch12, ch19,
+  ch13, ch14, ch15, ch20,
+].sort((a, b) => a.order - b.order);

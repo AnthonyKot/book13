@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Editor from '@monaco-editor/react';
+import Editor, { type OnMount } from '@monaco-editor/react';
 import {
   ArrowRight,
   BookOpen,
   Check,
   CheckCircle2,
+  ChevronLeft,
   ChevronRight,
   Circle,
   Code2,
@@ -13,6 +14,7 @@ import {
   Link2,
   List,
   LoaderCircle,
+  Lock,
   Menu,
   Play,
   RotateCcw,
@@ -59,14 +61,19 @@ function App() {
   const [curriculumOpen, setCurriculumOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab>('learn');
   const [linkCopied, setLinkCopied] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
   const workerRef = useRef<Worker | null>(null);
   const timeoutRef = useRef<number | null>(null);
+  const resetConfirmTimeoutRef = useRef<number | null>(null);
   const pendingChapterRef = useRef<string | null>(null);
   const curriculumCloseRef = useRef<HTMLButtonElement | null>(null);
   const curriculumOpenerRef = useRef<HTMLElement | null>(null);
+  const debriefRef = useRef<HTMLElement | null>(null);
+  const runCodeRef = useRef<() => void>(() => {});
 
   const chapterIndex = Math.max(0, chapters.findIndex((item) => item.id === currentChapterId));
   const chapter = chapters[chapterIndex] ?? chapters[0];
+  const prevChapter = chapterIndex > 0 ? chapters[chapterIndex - 1] : undefined;
   const nextChapter = chapters[chapterIndex + 1];
   const code = codeSnippets[chapter.id] ?? chapter.starterCode;
   const selectedPrediction = predictionSelections[chapter.id];
@@ -79,6 +86,10 @@ function App() {
   const selectedOption = useMemo(
     () => chapter.prediction.options.find((option) => option.id === selectedPrediction),
     [chapter, selectedPrediction],
+  );
+  const correctOption = useMemo(
+    () => chapter.prediction.options.find((option) => option.id === chapter.prediction.correctOptionId),
+    [chapter],
   );
   const predictionCorrect = selectedPrediction === chapter.prediction.correctOptionId;
 
@@ -133,6 +144,7 @@ function App() {
     startWorker();
     return () => {
       if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
+      if (resetConfirmTimeoutRef.current !== null) window.clearTimeout(resetConfirmTimeoutRef.current);
       workerRef.current?.terminate();
     };
   }, [startWorker]);
@@ -152,6 +164,11 @@ function App() {
     setResult(null);
     setMobileTab('learn');
     setLinkCopied(false);
+    setConfirmReset(false);
+    if (resetConfirmTimeoutRef.current !== null) {
+      window.clearTimeout(resetConfirmTimeoutRef.current);
+      resetConfirmTimeoutRef.current = null;
+    }
     if (window.location.hash !== labHash(chapter.order)) {
       window.history.replaceState(null, '', labHash(chapter.order));
     }
@@ -188,7 +205,29 @@ function App() {
     }, 5000);
   };
 
+  runCodeRef.current = runCode;
+
+  const handleEditorMount: OnMount = (editor, monaco) => {
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
+      runCodeRef.current();
+    });
+  };
+
   const resetLab = () => {
+    if (!confirmReset) {
+      setConfirmReset(true);
+      if (resetConfirmTimeoutRef.current !== null) window.clearTimeout(resetConfirmTimeoutRef.current);
+      resetConfirmTimeoutRef.current = window.setTimeout(() => {
+        setConfirmReset(false);
+        resetConfirmTimeoutRef.current = null;
+      }, 3000);
+      return;
+    }
+    if (resetConfirmTimeoutRef.current !== null) {
+      window.clearTimeout(resetConfirmTimeoutRef.current);
+      resetConfirmTimeoutRef.current = null;
+    }
+    setConfirmReset(false);
     resetCodeSnippet(chapter.id);
     setResult(null);
     setMobileTab('code');
@@ -197,6 +236,13 @@ function App() {
   const goToChapter = (id: string) => {
     setChapter(id);
     setCurriculumOpen(false);
+  };
+
+  const focusDebrief = () => {
+    setMobileTab('learn');
+    window.setTimeout(() => {
+      debriefRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 40);
   };
 
   const labUrl = `${window.location.origin}${window.location.pathname}${labHash(chapter.order)}`;
@@ -257,8 +303,30 @@ function App() {
           <div className="lesson-inner">
             <div className="chapter-kicker">
               <span>{courseModules.find((item) => item.id === chapter.module)?.title}</span>
-              <span>
-                Lab {chapter.order} of {chapters.length}
+              <span className="kicker-nav">
+                {prevChapter ? (
+                  <button
+                    className="kicker-step"
+                    type="button"
+                    onClick={() => goToChapter(prevChapter.id)}
+                    title={`Previous: Lab ${prevChapter.order} — ${prevChapter.title}`}
+                    aria-label={`Previous lab: ${prevChapter.title}`}
+                  >
+                    <ChevronLeft size={13} />
+                  </button>
+                ) : null}
+                <span>Lab {chapter.order} of {chapters.length}</span>
+                {nextChapter ? (
+                  <button
+                    className="kicker-step"
+                    type="button"
+                    onClick={() => goToChapter(nextChapter.id)}
+                    title={`Next: Lab ${nextChapter.order} — ${nextChapter.title}`}
+                    aria-label={`Next lab: ${nextChapter.title}`}
+                  >
+                    <ChevronRight size={13} />
+                  </button>
+                ) : null}
                 <button className="copy-link" type="button" onClick={copyLabLink} title={labUrl} aria-label="Copy link to this lab">
                   <Link2 size={13} /> {linkCopied ? 'Link copied' : 'Copy link'}
                 </button>
@@ -285,18 +353,31 @@ function App() {
               {chapter.prediction.code ? <pre><code>{chapter.prediction.code}</code></pre> : null}
               <fieldset disabled={predictionChecked}>
                 <legend className="sr-only">Choose your prediction</legend>
-                {chapter.prediction.options.map((option) => (
-                  <label key={option.id} className={selectedPrediction === option.id ? 'selected' : ''}>
-                    <input
-                      type="radio"
-                      name={`prediction-${chapter.id}`}
-                      value={option.id}
-                      checked={selectedPrediction === option.id}
-                      onChange={() => selectPrediction(chapter.id, option.id)}
-                    />
-                    <span>{option.label}</span>
-                  </label>
-                ))}
+                {chapter.prediction.options.map((option) => {
+                  const isSelected = selectedPrediction === option.id;
+                  const isCorrectOption = option.id === chapter.prediction.correctOptionId;
+                  const stateClass = predictionChecked
+                    ? isCorrectOption
+                      ? 'correct-choice'
+                      : isSelected
+                        ? 'wrong-choice'
+                        : ''
+                    : isSelected
+                      ? 'selected'
+                      : '';
+                  return (
+                    <label key={option.id} className={stateClass}>
+                      <input
+                        type="radio"
+                        name={`prediction-${chapter.id}`}
+                        value={option.id}
+                        checked={isSelected}
+                        onChange={() => selectPrediction(chapter.id, option.id)}
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  );
+                })}
               </fieldset>
               {!predictionChecked ? (
                 <button className="secondary-button" type="button" disabled={!selectedPrediction} onClick={() => checkPrediction(chapter.id)}>
@@ -305,46 +386,64 @@ function App() {
               ) : (
                 <div className={`prediction-feedback ${predictionCorrect ? 'correct' : 'incorrect'}`} role="status">
                   {predictionCorrect ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
-                  <p><strong>{predictionCorrect ? 'That is the shift.' : 'Useful miss.'}</strong>{selectedOption?.explanation}</p>
+                  <div>
+                    <p><strong>{predictionCorrect ? 'That is the shift.' : 'Useful miss.'}</strong>{selectedOption?.explanation}</p>
+                    {!predictionCorrect && correctOption ? (
+                      <p className="correct-followup">
+                        <strong>Actual outcome ({correctOption.label}):</strong> {correctOption.explanation}
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
               )}
               {predictionChecked ? <p className="mental-model"><span>The shift</span>{chapter.mentalModel}</p> : null}
             </section>
 
-            <section className="prose-section" aria-labelledby="rule-heading">
-              <span className="step-label">02 · See the rule</span>
-              <h2 id="rule-heading">What Go is actually doing</h2>
-              <div className="lesson-prose" dangerouslySetInnerHTML={{ __html: chapter.lesson }} />
-            </section>
-
-            <section className="challenge-card" aria-labelledby="challenge-heading">
-              <span className="step-label">03 · Prove it in code</span>
-              <h2 id="challenge-heading">{chapter.challenge.title}</h2>
-              <p dangerouslySetInnerHTML={{ __html: chapter.challenge.description }} />
-              <button className="primary-button mobile-code-cta" type="button" onClick={() => setMobileTab('code')}>
-                Open code lab <ArrowRight size={17} />
-              </button>
-            </section>
-
-            <section className="hints" aria-labelledby="hints-heading">
-              <div className="section-row">
-                <div><span className="step-label">Need a nudge?</span><h2 id="hints-heading">Progressive hints</h2></div>
-                {revealedHints < chapter.hints.length ? (
-                  <button className="text-button" type="button" onClick={() => revealHint(chapter.id, revealedHints + 1)}>
-                    Reveal hint {revealedHints + 1}
-                  </button>
-                ) : null}
+            {!predictionChecked ? (
+              <div className="locked-lesson-gate" role="note">
+                <Lock size={17} aria-hidden="true" />
+                <p>
+                  <strong>Locked until you predict.</strong> Commit your prediction above to reveal Go’s rule, the coding challenge, and the test runner.
+                </p>
               </div>
-              {revealedHints === 0 ? <p className="muted">Try the lab once before opening a hint. Your code will be preserved.</p> : null}
-              <ol>
-                {chapter.hints.slice(0, revealedHints).map((hint, index) => (
-                  <li key={hint}><span>{index + 1}</span><p dangerouslySetInnerHTML={{ __html: hint }} /></li>
-                ))}
-              </ol>
-            </section>
+            ) : (
+              <>
+                <section className="prose-section" aria-labelledby="rule-heading">
+                  <span className="step-label">02 · See the rule</span>
+                  <h2 id="rule-heading">What Go is actually doing</h2>
+                  <div className="lesson-prose" dangerouslySetInnerHTML={{ __html: chapter.lesson }} />
+                </section>
+
+                <section className="challenge-card" aria-labelledby="challenge-heading">
+                  <span className="step-label">03 · Prove it in code</span>
+                  <h2 id="challenge-heading">{chapter.challenge.title}</h2>
+                  <p dangerouslySetInnerHTML={{ __html: chapter.challenge.description }} />
+                  <button className="primary-button mobile-code-cta" type="button" onClick={() => setMobileTab('code')}>
+                    Open code lab <ArrowRight size={17} />
+                  </button>
+                </section>
+
+                <section className="hints" aria-labelledby="hints-heading">
+                  <div className="section-row">
+                    <div><span className="step-label">Need a nudge?</span><h2 id="hints-heading">Progressive hints</h2></div>
+                    {revealedHints < chapter.hints.length ? (
+                      <button className="text-button" type="button" onClick={() => revealHint(chapter.id, revealedHints + 1)}>
+                        Reveal hint {revealedHints + 1}
+                      </button>
+                    ) : null}
+                  </div>
+                  {revealedHints === 0 ? <p className="muted">Try the lab once before opening a hint. Your code will be preserved.</p> : null}
+                  <ol>
+                    {chapter.hints.slice(0, revealedHints).map((hint, index) => (
+                      <li key={hint}><span>{index + 1}</span><p dangerouslySetInnerHTML={{ __html: hint }} /></li>
+                    ))}
+                  </ol>
+                </section>
+              </>
+            )}
 
             {result?.status === 'passed' || completion ? (
-              <section className="debrief-card" aria-labelledby="debrief-heading">
+              <section ref={debriefRef} className="debrief-card" aria-labelledby="debrief-heading">
                 <span className="step-label">04 · Carry it forward</span>
                 <h2 id="debrief-heading">{chapter.debrief.title}</h2>
                 <p>{chapter.debrief.summary}</p>
@@ -369,16 +468,24 @@ function App() {
             <div className={`runtime-state ${runtimeState}`}>
               <span /> {runtimeState === 'ready' ? 'Go ready' : runtimeState === 'loading' ? 'Loading Go…' : 'Runtime unavailable'}
             </div>
-            <button className="quiet-button" type="button" onClick={resetLab}><RotateCcw size={15} /> Reset</button>
+            <button
+              className={`quiet-button ${confirmReset ? 'confirm-reset' : ''}`}
+              type="button"
+              onClick={resetLab}
+              title={confirmReset ? 'Click again to restore starter code' : 'Reset editor to starter code'}
+            >
+              <RotateCcw size={15} /> {confirmReset ? 'Confirm reset?' : 'Reset'}
+            </button>
             <button
               className="run-button"
               type="button"
               disabled={!predictionChecked || runtimeState !== 'ready' || isRunning}
               onClick={runCode}
-              title={!predictionChecked ? 'Commit your prediction first' : undefined}
+              title={!predictionChecked ? 'Commit your prediction first' : 'Run tests (Ctrl/Cmd + Enter)'}
             >
               {isRunning ? <LoaderCircle className="spin" size={17} /> : <Play size={17} fill="currentColor" />}
               {isRunning ? 'Running tests…' : 'Run tests'}
+              {!isRunning ? <kbd className="run-kbd" aria-hidden="true">⌘↵</kbd> : null}
             </button>
           </div>
 
@@ -388,6 +495,7 @@ function App() {
               defaultLanguage="go"
               theme="vs-dark"
               value={code}
+              onMount={handleEditorMount}
               onChange={(value) => value !== undefined && saveCodeSnippet(chapter.id, value)}
               loading={<div className="editor-loading">Loading editor…</div>}
               options={{
@@ -432,9 +540,20 @@ function App() {
                 </div>
                 {result.stdout ? <details><summary>Program output</summary><pre><code>{result.stdout}</code></pre></details> : null}
                 {result.status === 'passed' ? (
-                  <button className="primary-button mobile-debrief-cta" type="button" onClick={() => setMobileTab('learn')}>
-                    Read the debrief <ArrowRight size={17} />
-                  </button>
+                  <div className="results-next-actions">
+                    <button className="quiet-button" type="button" onClick={focusDebrief}>
+                      Read debrief
+                    </button>
+                    {nextChapter ? (
+                      <button className="primary-button" type="button" onClick={() => goToChapter(nextChapter.id)}>
+                        Next lab: {nextChapter.title} <ArrowRight size={16} />
+                      </button>
+                    ) : (
+                      <button className="primary-button" type="button" onClick={openCurriculum}>
+                        Curriculum <List size={16} />
+                      </button>
+                    )}
+                  </div>
                 ) : null}
               </>
             )}

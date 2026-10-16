@@ -1,12 +1,13 @@
 # The Go Shift
 
-Fifteen small, executable labs for experienced developers learning to make decisions in Go.
+Twenty small, executable labs for experienced developers learning to make decisions in Go.
 
 The course is arranged around mental-model changes rather than language syntax:
 
-- **Think in Go** — values, errors, slices, retained storage, and text
-- **Solve in Go** — maps, nil-safe traversal, and standard-library contracts
-- **Ship in Go** — cancellation, goroutine ownership, bounded concurrency, and dependency boundaries
+- **Think in Go** — values, errors, slices, retained storage, text, typed-nil interfaces, and `defer` evaluation timing
+- **Solve in Go** — maps, nil-safe traversal, standard-library contracts, and composition vs. inheritance
+- **Ship in Go** — cancellation, goroutine ownership, bounded concurrency, dependency boundaries, and loop timers
+- **Serve in Go** — ORM zero-value conditions, HTTP handler control flow, strict JSON contracts, and outbound HTTP clients
 
 Every lab asks for a prediction before code runs, compiles the learner's program in the browser,
 checks behavior with hidden cases, explains individual failures, and closes with a transfer question.

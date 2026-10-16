@@ -2,10 +2,10 @@ import type { Chapter } from '../types';
 
 export const ch11: Chapter = {
   id: 'ch11',
-  order: 9,
+  order: 12,
   module: 'ship',
   title: 'A Deadline Is a Signal',
-  mentalModel: 'Adding a timeout around a call will stop the work when time runs out.',
+  mentalModel: 'A deadline does not reach in and stop a running function; it closes a channel that cooperative code must observe, and the cancel function must still run to release the timer.',
   outcome: 'Propagate a caller’s lifetime into downstream work and release the derived context on every return path.',
   recognitionCue: 'When work belongs to a request and may block, accept the caller’s context and pass a derived context down the call chain.',
   prediction: {

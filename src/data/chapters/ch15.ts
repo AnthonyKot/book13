@@ -2,7 +2,7 @@ import type { Chapter } from '../types';
 
 export const ch15: Chapter = {
   id: 'ch15',
-  order: 15,
+  order: 19,
   module: 'serve',
   title: 'Absent, Zero and Unknown Are Three Different Things',
   mentalModel: 'To your API, a field that was not sent, a field sent as zero, and a field you never defined are three different events. To the default decoder they are one: fill what matches, zero the rest, ignore what is left, report nothing.',

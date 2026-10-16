@@ -36,10 +36,11 @@ use(header)`,
   lesson: `
     <p>Reslicing creates another view; it does not copy elements. Returning <code>data[:10]</code> can therefore keep a large backing array reachable even though the caller needs only ten bytes. This is retained backing storage, not permanent leakage: the array becomes collectible when the last referring slice is no longer reachable.</p>
     <p>A full slice expression such as <code>data[:10:10]</code> limits future append capacity but still points to the same array. To cross an ownership or lifetime boundary, allocate separate storage and copy the useful bytes. <code>copy</code> transfers <code>min(len(dst), len(src))</code> elements and never allocates, so the destination’s length decides how much is kept.</p>
-    <p>Since Go 1.20, <code>bytes.Clone(data[:n])</code> does the same in one call for byte slices, and since Go 1.21 <code>slices.Clone</code> does it for any slice type. Both are <code>append</code> underneath, so the copy’s capacity may round up to an allocation size class (16 for a ten-byte clone). The browser evaluator in these labs runs <code>bytes.Clone</code> but not the generic <code>slices.Clone</code>.</p>
+    <p>Since Go 1.20, <code>bytes.Clone(data[:n])</code> does the same in one call for byte slices, and since Go 1.21 <code>slices.Clone</code> does it for any slice type. Both are <code>append</code> underneath, so the copy’s capacity may round up to an allocation size class (16 for a ten-byte clone).</p>
     <pre><code>prefix := make([]byte, n)
 copy(prefix, data[:n])
 return prefix</code></pre>
+    <p class="lab-note"><strong>About this lab.</strong> The browser evaluator runs standard <code>copy</code> and <code>bytes.Clone</code>, but not the generic <code>slices.Clone</code> helper.</p>
   `,
   challenge: {
     title: 'Return an independent header copy',

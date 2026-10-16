@@ -2,10 +2,10 @@ import type { Chapter } from '../types';
 
 export const ch12: Chapter = {
   id: 'ch12',
-  order: 12,
+  order: 15,
   module: 'ship',
   title: 'Interfaces Belong to Consumers',
-  mentalModel: 'A dependency should publish a broad interface so downstream code can mock it.',
+  mentalModel: 'Satisfaction is implicit, so the caller—not the dependency—should define the smallest interface it actually needs at the boundary where substitution matters.',
   outcome: 'Define a narrow behavior boundary where it is consumed and substitute a test implementation without a framework or implements declaration.',
   recognitionCue: 'Introduce an interface when a consumer needs behavior from more than one implementation, and include only the methods that consumer calls.',
   prediction: {

@@ -2,10 +2,10 @@ import type { Chapter } from '../types';
 
 export const ch9: Chapter = {
   id: 'ch9',
-  order: 11,
+  order: 14,
   module: 'ship',
   title: 'Bound the Scarce Thing',
-  mentalModel: 'Because goroutines are cheap, starting all available work at once is a reasonable default.',
+  mentalModel: 'Goroutines are cheap, but the downstream resource they touch is not; bound concurrent access explicitly with a permit pool and wait for completion separately.',
   outcome: 'Run every task while keeping concurrent access to a scarce resource at or below a chosen limit.',
   recognitionCue: 'When downstream capacity is lower than incoming work—connections, memory, file handles, or API slots—make that capacity an explicit bound.',
   prediction: {
@@ -47,10 +47,11 @@ go func() {
 }()</code></pre>
     <p>This limits simultaneous work, not work per second. It is also not a fixed worker pool: goroutines are still created as permits become available. Pick the mechanism that matches the scarce thing you need to protect.</p>
     <p>Waiting is a separate obligation. A permit tells you a slot was free, not that the work finished; a <code>sync.WaitGroup</code>—<code>Add(1)</code> before the <code>go</code> statement, <code>Done</code> deferred inside, <code>Wait</code> after the loop—is how the caller learns that every task returned.</p>
+    <p class="lab-note"><strong>About this lab.</strong> The in-browser interpreter (Yaegi 0.16) predates Go 1.22’s per-iteration loop variables and <code>for id := range taskCount</code>. Write a three-clause <code>for</code> loop and pass <code>id</code> into the goroutine as an argument (<code>go func(id int) { … }(id)</code>) so goroutines do not share one loop variable.</p>
   `,
   challenge: {
     title: 'Protect a three-slot dependency',
-    description: 'Implement <code>runBounded</code>. Run each task ID from <code>0</code> through <code>taskCount-1</code> exactly once, allow no more than <code>limit</code> calls to <code>work</code> at a time, and wait for them all before returning. For an empty task set or a limit below one, return without starting work. One constraint of the tooling: the in-browser interpreter (yaegi 0.16) predates Go 1.22, so write a three-clause <code>for</code> loop rather than <code>for id := range taskCount</code>, and pass <code>id</code> into the goroutine as an argument instead of capturing it—the per-iteration loop variable that Go 1.22 introduced does not exist here.',
+    description: 'Implement <code>runBounded</code>. Run each task ID from <code>0</code> through <code>taskCount-1</code> exactly once, allow no more than <code>limit</code> calls to <code>work</code> at a time, and wait for them all before returning. For an empty task set or a limit below one, return without starting work.',
   },
   starterCode: `package main
 
